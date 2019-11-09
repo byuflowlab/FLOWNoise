@@ -22,7 +22,7 @@ module_path = splitdir(@__FILE__)[1]                # Path to this module
 
 # ------------ HEADERS ---------------------------------------------------------
 # Load headers
-for module_name in []
+for module_name in ["observer", "wopwop"]
     include("FLOWNoise_"*module_name*".jl")
 end
 
