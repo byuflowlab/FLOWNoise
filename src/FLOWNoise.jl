@@ -14,16 +14,17 @@ module FLOWNoise
 # GeometricTools https://github.com/byuflowlab/GeometricTools.jl
 import GeometricTools
 gt = GeometricTools
-import FFTW 
 
 # ------------ GENERIC MODULES -------------------------------------------------
+import FFTW
+import WAV
 
 # ------------ GLOBAL VARIABLES ------------------------------------------------
 module_path = splitdir(@__FILE__)[1]                # Path to this module
 
 # ------------ HEADERS ---------------------------------------------------------
 # Load headers
-for module_name in ["observer", "wopwop", "postprocessing"]
+for module_name in ["observer", "wopwop", "wav"]#"postprocessing"]
     include("FLOWNoise_"*module_name*".jl")
 end
 

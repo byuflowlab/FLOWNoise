@@ -9,12 +9,12 @@ postprocessing) developed at BYU's FLOW lab.
 # Dependencies
   * [`GeometricTools`](https://github.com/byuflowlab/GeometricTools.jl)
   * [`FFTW`](https://github.com/JuliaMath/FFTW.jl)
+  * [`WAV`](https://github.com/dancasimiro/WAV.jl)
   * Paraview  : Not needed, but examples call Paraview for visualization of VTK
       outputs.
 
 # Related Projects
   * [Rotor-on-rotor aeroacoustic interactions](https://github.com/byuflowlab/alvarezcritchfield2020-noise-prop-on-prop)
-  
   * [BPM code for turbine acoustics](https://github.com/byuflowlab/bpm-turbine-acoustics)
 
 
