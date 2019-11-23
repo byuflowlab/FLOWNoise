@@ -46,9 +46,7 @@ function pressure_time2frequency(time::Array{Real, 1}, pressure::Array{Real, 1},
     M = convert(Int64,floor(N/2 + 1)) # number of frequency bins of type Int64 for indexing later
 
     # Window data if specified - treats data as periodic for fourier transform
-    if windowtype == "None"
-        break
-    else
+    if windowtype != "None"
         pressure = windowdata!(time, pressure, windowtype)
     end
 
@@ -86,7 +84,8 @@ function pressure_time2frequency(time::Array{Real, 1}, pressure::Array{Real, 1},
             error("Invalid SPLtype specified.")
         end
 
-        global p2 += wa[m] * abs2(Pc[m]) #overall mean square pressure
+        # global p2 += wa[m] * abs2(Pc[m]) #overall mean square pressure
+        p2 += wa[m] * abs2(Pc[m]) #overall mean square pressure
         p2local[m] = 0.5 * wa[m] * abs2(Pc[m]) #local mean square pressure for specific frequency
         SPLlocal_dB[m] = 10 * log(10,p2local[m]/((20*10^-6)^2)) #local SPL
 
@@ -136,7 +135,8 @@ function windowdata!(time::Array{Real, 1}, data::Array{Real, 1}, windowtype::Str
         end
 
         data[tindex] *= wh * scalingfactor
-        global tindex += 1
+        # global tindex += 1
+        tindex += 1
     end # TODO: broadcast this in the future
 
 #TODO: currently not solving problem in case 2 not matching up
