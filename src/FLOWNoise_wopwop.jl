@@ -1,6 +1,6 @@
 #=##############################################################################
 # DESCRIPTION
-    Tools for formation of PSU-WOPWOP's inputs/outputs.
+    Tools for formatting PSU-WOPWOP's inputs/outputs.
 
 # AUTHORSHIP
   * Author    : Eduardo J. Alvarez and Tyler Critchfield
