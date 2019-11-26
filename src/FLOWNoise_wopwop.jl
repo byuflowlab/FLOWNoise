@@ -139,15 +139,13 @@ function geomwopwop2vtk(filename; read_path="", save_path=nothing,
         doti = find(x->x=='.', filename)
         if length(doti)!=0
             # Get rid of extension
-            pref = filename[1:doti[end]-1]*"_"
+            preff = filename[1:doti[end]-1]
         else
-            pref = filename*"_"
+            preff = filename
         end
     else
-        pref = pref_save_fname
+        preff = pref_save_fname
     end
-
-    save_fname = pref*filename
 
     # Open PSU-WOPWOP file
     f = open(joinpath(read_path, filename), "r")
@@ -295,8 +293,8 @@ function geomwopwop2vtk(filename; read_path="", save_path=nothing,
             push!(xyz, vals)
         end
 
-        points = [[xyz[1][i], xyz[2][i], xyz[3][i]] for i in 1:nbnodes[zonei]]
-        zones = [zonei for p in points]
+        this_points = [[xyz[1][i], xyz[2][i], xyz[3][i]] for i in 1:nbnodes[zonei]]
+        zones = [zonei for p in this_points]
 
 
         # Read normals
@@ -341,15 +339,16 @@ function geomwopwop2vtk(filename; read_path="", save_path=nothing,
                                     "field_data" => normals))
         end
 
+        push!(points, this_points)
         push!(cells, this_cells)
         push!(point_datas, point_data)
         push!(cell_datas, cell_data)
 
         if save_path != nothing
 
-            filename = save_fname*"_"*replace(names[zonei], " ", "")
+            filename = preff*"_"*replace(names[zonei], " ", "")
 
-            gt.generateVTK(filename, points; cells=this_cells,
+            gt.generateVTK(filename, this_points; cells=this_cells,
                             point_data=point_data, cell_data=cell_data,
                             path=save_path,
                             override_cell_type=celltypes[zonei])
@@ -366,4 +365,163 @@ function geomwopwop2vtk(filename; read_path="", save_path=nothing,
     end
 
     return names, points, cells, point_datas, cell_datas, str
+end
+
+
+"""
+    `read_wopwoploading(filename; read_path="", verbose=false, v_lvl=0)`
+
+Read a PSU-WOPWOP functional file containing loading data (v1.0). Returns
+`(hdr, names, timeinfo, dims, time, data)` where data[k][:, i, j] is the value at
+the i-th node (or face) at the j-th time in the k-th zone
+"""
+function read_wopwoploading(filename; read_path="", verbose=false, v_lvl=0)
+
+    # Open PSU-WOPWOP file
+    f = open(joinpath(read_path, filename), "r")
+
+    # Read format header
+    header = []
+    push!(header, read(f, Int32, 1))                #1 Magic number
+    push!(header, read(f, Int32, 2))                #2 Version
+    chars = [Char(c) for c in read(f, Int8, 1024)]  #3 Comments
+    str = ""; for c in chars; str *= c; end;
+    push!(header, str)
+    push!(header, read(f, Int32, 1))                #4 Functional file
+    nz = read(f, Int32, 1)[1]                       #5 Number of zones
+    push!(header, nz)
+    push!(header, read(f, Int32, 1))                #6 1==structured, 2==unstructured
+    push!(header, read(f, Int32, 1))                #7 1==Constant, 2==Periodic, 3==Aperiodic
+    ncnt = read(f, Int32, 1)[1]                     #8 1==node-centered, 2==face-centered
+    push!(header, ncnt)
+    push!(header, read(f, Int32, 1))                #9 1==pressure, 2==loading, 3==flow
+    push!(header, read(f, Int32, 1))                #10 1==stationary ground fixed, 2==rotating ground fixed, 3==patch fixed
+    push!(header, read(f, Int32, 1))                #11 1==single, 2==double
+    push!(header, read(f, Int32, 1))                #12 something
+    push!(header, read(f, Int32, 1))                #13 something else
+
+    if verbose
+        println("\t"^(v_lvl)*"$(header[1])\t # Magic number")
+        println("\t"^(v_lvl)*"$(header[2])\t # Version")
+        println("\t"^(v_lvl)*"$(header[3])\t # Comment")
+        println("\t"^(v_lvl)*"$(header[4])\t # Functional file")
+        println("\t"^(v_lvl)*"$(header[5])\t\t # Number of zones")
+        println("\t"^(v_lvl)*"$(header[6])\t # 1==structured, 2==unstructured")
+        println("\t"^(v_lvl)*"$(header[7])\t # 1==Constant, 2==Periodic, 3==Aperiodic")
+        println("\t"^(v_lvl)*"$(header[8])\t\t # 1==node-centered, 2==face-centered")
+        println("\t"^(v_lvl)*"$(header[9])\t # 1==pressure, 2==loading, 3==flow")
+        println("\t"^(v_lvl)*"$(header[10])\t # 1==stationary ground, 2==rotating ground, 3==patch")
+        println("\t"^(v_lvl)*"$(header[11])\t # 1==single, 2==double")
+        println("\t"^(v_lvl)*"$(header[12])\t # something")
+        println("\t"^(v_lvl)*"$(header[13])\t # something else")
+    end
+
+    # Error cases: Current implementation only takes unstructured, constant,
+    # face centered patches
+    Int(header[2][1]) != 1 ? error("Only v1.0 is supported") :
+    Int(header[4][1]) != 2 ? error("File is not flagged as a functional file") :
+    # Int(header[6][1]) != 2 ? error("Only unstructured patches are supported") :
+    # Int(header[7][1]) != 1 ? error("Only constant patches are supported") :
+    # Int(header[8][1]) != 2 ? error("Only face-centered patches are supported") :
+    Int(header[9][1]) != 2 ? error("Only loading vectors are supported") :
+    Int(header[11][1]) != 1 ? error("Only single-precision floats are supported") :
+    nothing;
+
+    # Zone specification
+    zone_specs = zeros(Int, read(f, Int32))     # Read number of zones
+    for i in 1:length(zone_specs)               # Read each zone number
+        zone_specs[i] = Int(read(f, Int32))
+    end
+
+    if verbose
+        println("\t"^(v_lvl+1)*"Zone specification: $zone_specs")
+    end
+
+    names = String[]
+    timeinfo = []
+    dims = []
+    ndata = zeros(Int, length(zone_specs))
+    nt = nothing
+
+    # Data header
+    for zi in 1:length(zone_specs)
+
+        # Name
+        chars = [Char(c) for c in read(f, Int8, 32)]
+        str = ""; for c in chars; str *= c; end;
+        push!(names, str)
+
+        # Time information
+        if Int(header[7][1])==2         # Periodic case
+            push!(timeinfo, Any[read(f, Float32), read(f, Int32)])
+            ntimes = timeinfo[end][2]
+
+        elseif Int(header[7][1])==3     # Aperiodic case
+            push!(timeinfo, read(f, Int32))
+            ntimes = timeinfo[end]
+
+        else                            # Constant case
+            push!(timeinfo, 1)
+            ntimes = 1
+        end
+
+        if nt != nothing && nt != ntimes
+            error("Logic error: Got different times ($(nt)!=$(ntimes))")
+        end
+        nt = ntimes
+
+        # Dimensions
+        if Int(header[6][1])==1         # Structured case
+            push!(dims, read(f, Int32, 2))
+            ndata[zi] = dims[end][1]*dims[end][2]
+        else
+            push!(dims, read(f, Int32))
+            ndata[zi] = dims[end]
+        end
+
+        if verbose
+            println("\t"^(v_lvl+1)*"$(replace(names[end], " ", ""))"*
+                    "\t$(timeinfo[end])\t$(dims[end]) # Name, Time info, dims")
+        end
+    end
+
+    # Time of every data block of every zone
+    time = [zeros(nt) for i in 1:length(zone_specs)]
+
+    # Data of every zone, where data[k][:, i, j] is the value at the i-th node
+    # (or face) at the j-th time in the k-th zone
+    data = [zeros(3, nd, nt) for nd in ndata]
+
+    for ti in 1:nt                          # Iterate over time entries
+        for zi in 1:length(zone_specs)      # Iterate over zones
+
+            if Int(header[7][1])!=1
+                time[zi][ti] = Float64(read(f, Float32))
+            end
+
+            # NOTE: Here I assume is loading data (three-dimensional)
+            for dim in 1:3                  # Iterate over spatial dimension
+                for di in 1:ndata[zi]       # Iterate over nodes / faces
+
+                    data[zi][dim, di, ti] = Float64(read(f, Float32))
+
+                end
+            end
+        end
+    end
+
+
+    hdr = Dict(
+                "version"   => header[2],
+                "comment"   => header[3],
+                "zones"     => Int(header[5][1]),
+                "structured"=> Int(header[6][1])==1,
+                "time"      => Int(header[7][1]),
+                "ntimes"    => nt,
+                "node-centered"=> Int(header[8][1])==1,
+                "data-type" => Int(header[9][1]),
+                "frame"     => Int(header[10][1])
+              )
+
+    return hdr, names, timeinfo, dims, time, data
 end
