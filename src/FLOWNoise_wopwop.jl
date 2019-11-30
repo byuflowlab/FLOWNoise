@@ -419,26 +419,22 @@ function geomwopwop2vtk(filename; read_path="", save_path=nothing,
     # face centered patches
     Int(header[2][1]) != 1 ? error("Only v1.0 is supported") :
     # Int(header[7][1]) != 2 ? error("Only unstructured patches are supported") :
-    Int(header[8][1]) != 1 ? error("Only constant patches are supported") :
+    # Int(header[8][1]) != 1 ? error("Only constant patches are supported") :
     # Int(header[9][1]) != 2 ? error("Only face-centered patches are supported") :
     Int(header[10][1]) != 1 ? error("Only single-precision floats are supported") :
     nothing;
 
-    # Read patch headers
-    points = []
-    normals = []
-    zones = []
+    Tflag = Int(header[8][1])       # 1==Constant, 2==Periodic, 3==Aperiodic
 
+    # Read patch headers
     names = []
     nbnodes = []
     nbfaces = []
     imaxs = []
     jmaxs = []
     connectivity = []
-
-    cells = []
-    point_datas = []
-    cell_datas = []
+    periods = []
+    nts = []
     celltypes = []
 
     for zonei in 1:nz
@@ -449,6 +445,15 @@ function geomwopwop2vtk(filename; read_path="", save_path=nothing,
 
         push!(names, str)
         push!(connectivity, [])
+
+        if Tflag==2
+            # Period
+            push!(periods, Float64(read(f, Float32)))
+        end
+        if Tflag==2 || Tflag==3
+            # nt
+            push!(nts, read(f, Int32))
+        end
 
         # Unstructured case
         if Int(header[7][1]) == 2
@@ -506,83 +511,107 @@ function geomwopwop2vtk(filename; read_path="", save_path=nothing,
             end
         end
 
+        if verbose && Tflag==2
+            println("\t"^(v_lvl+1)*"$(periods[end])\t$(nts[end])\t# Period, nt")
+        elseif verbose && Tflag==3
+            println("\t"^(v_lvl+1)*"$(nts[end])\t# nt")
+        end
+
     end
+
+
+    # -------------------- READ POINTS AND NORMALS -----------------------------
+
+    Nflag = Int(header[9][1]) # Normal centered 1==node, 2==face
+
+    if Tflag != 1
+        points = [zeros(3, nbnodes[zi], nts[zi]) for zi in 1:nz]
+        normals = [zeros(3, Nflag==1 ? nbnodes[zi] : nbfaces[zi], nts[zi]) for zi in 1:nz]
+        times = [zeros(nts[zi]) for zi in 1:nz]
+    else
+        points = [zeros(3, nbnodes[zi]) for zi in 1:nz]
+        normals = [zeros(3, Nflag==1 ? nbnodes[zi] : nbfaces[zi]) for zi in 1:nz]
+        times = []
+    end
+
+    # Format cells as vtks (0-indexed)
+    vtk_cells = [[[ind-1 for ind in cell] for cell in connectivity[zi]] for zi in 1:nz]
+
+    # Zone of every point
+    point_zones = [[zi for pi in 1:nbnodes[zi]] for zi in 1:nz]
 
     str = ""
 
-    for zonei in 1:nz
-
-        # Read points
-        xyz = []
-        for dim in 1:3
-            vals = []
-            for pi in 1:nbnodes[zonei]
-                push!(vals, Float64(read(f, Float32)))
+    # NOTE: I assume that all zones have the same number of time steps, so here
+    # I'm checking that assumption
+    if Tflag != 1
+        for zi in 1:nz-1
+            if nts[zi]!=nts[zi+1]
+                error("Found that not all zones have the same number of time"*
+                        " steps ($(nts[zi])!=$(nts[zi+1])).")
             end
-            push!(xyz, vals)
         end
+    end
 
-        this_points = [[xyz[1][i], xyz[2][i], xyz[3][i]] for i in 1:nbnodes[zonei]]
-        zones = [zonei for p in this_points]
+    for ti in 1:(Tflag != 1 ? nts[1] : 1)   # Iterate over time steps
+        for zonei in 1:nz                   # Iterate over zones
 
+            # Read time signature
+            if Tflag != 1
+                times[zonei][ti] = Float64(read(f, Float32))
+            end
 
-        # Read normals
-        nxyz = []
-        for dim in 1:3
-            vals = []
-            # Case of face-centered normals
-            if Int(header[9][1]) == 2
-                for pi in 1:nbfaces[zonei]
-                    push!(vals, Float64(read(f, Float32)))
-                end
-            # Case of node-centered normals
-            else
+            # Read points
+            for k in 1:3
                 for pi in 1:nbnodes[zonei]
-                    push!(vals, Float64(read(f, Float32)))
+                    points[zonei][k, pi, ti] = Float64(read(f, Float32))
                 end
             end
 
-            push!(nxyz, vals)
-        end
-        if Int(header[9][1]) == 2
-            normals = [[nxyz[1][i], nxyz[2][i], nxyz[3][i]] for i in 1:nbfaces[zonei]]
-        else
-            normals = [[nxyz[1][i], nxyz[2][i], nxyz[3][i]] for i in 1:nbnodes[zonei]]
-        end
+            # Read normals
+            for k in 1:3
+                for ni in 1:(Nflag==1 ? nbnodes[zonei] : nbfaces[zonei])
+                    normals[zonei][k, ni, ti] = Float64(read(f, Float32))
+                end
+            end
 
-        # Format cells: shifts to 0-indexing for VTK
-        this_cells = [[index-1 for index in cell] for cell in connectivity[zonei]]
+            if save_path != nothing
 
-        # Data fields
-        point_data = [Dict( "field_name" => "zone",
-                            "field_type" => "scalar",
-                            "field_data" => zones)]
-        if Int(header[9][1]) == 2
-            cell_data = [Dict( "field_name" => "normals",
-                                "field_type" => "vector",
-                                "field_data" => normals)]
-        else
-            cell_data = nothing
-            push!(point_data, Dict( "field_name" => "normals",
-                                    "field_type" => "vector",
-                                    "field_data" => normals))
-        end
+                # Formats points as vtks
+                vtk_points = [ points[zonei][:, pi, ti] for pi in 1:nbnodes[zonei] ]
 
-        push!(points, this_points)
-        push!(cells, this_cells)
-        push!(point_datas, point_data)
-        push!(cell_datas, cell_data)
+                # Format normals as a vtk field
+                vtk_normals = [ normals[zonei][:, pi, ti] for pi in 1:(
+                                    Nflag==1 ? nbnodes[zonei] : nbfaces[zonei]) ]
 
-        if save_path != nothing
+                # Data fields
+                point_data = [Dict( "field_name" => "zone",
+                                    "field_type" => "scalar",
+                                    "field_data" => point_zones[zonei])]
 
-            filename = preff*"_"*replace(names[zonei], " ", "")
+                if Nflag == 2
+                    cell_data = [Dict( "field_name"  => "normals",
+                                        "field_type" => "vector",
+                                        "field_data" => vtk_normals)]
+                else
+                    cell_data = nothing
+                    push!(point_data, Dict( "field_name" => "normals",
+                                            "field_type" => "vector",
+                                            "field_data" => vtk_normals))
+                end
 
-            gt.generateVTK(filename, this_points; cells=this_cells,
-                            point_data=point_data, cell_data=cell_data,
-                            path=save_path,
-                            override_cell_type=celltypes[zonei])
+                filename = preff*"_"*replace(names[zonei], " ", "")
 
-            str *= filename*".vtk;"
+                gt.generateVTK(filename, vtk_points; cells=vtk_cells[zonei],
+                                point_data=point_data, cell_data=cell_data,
+                                path=save_path, num=Tflag!=1 ? ti : nothing,
+                                override_cell_type=celltypes[zonei])
+
+                if ti==1
+                    str *= filename*(Tflag==1 ? ".vtk;" : "...vtk;")
+                end
+            end
+
         end
     end
 
@@ -593,7 +622,7 @@ function geomwopwop2vtk(filename; read_path="", save_path=nothing,
         run(`paraview --data=$(vtk_str)`)
     end
 
-    return names, points, cells, point_datas, cell_datas, str
+    return names, points, vtk_cells, periods, times, str
 end
 
 """
