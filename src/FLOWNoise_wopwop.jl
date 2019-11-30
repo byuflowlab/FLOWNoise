@@ -595,3 +595,154 @@ function geomwopwop2vtk(filename; read_path="", save_path=nothing,
 
     return names, points, cells, point_datas, cell_datas, str
 end
+
+"""
+Reads a time-sequency or single legacy ASCII unstructured VTK file and formats
+them into a single file in WOPWOP's geometry format v1.0.
+"""
+function vtk2wopwop(in_filename, out_filename; read_path="", nums=nothing,
+                            save_path="", wopbin=true,
+                            t0=0.0, tf=1.0, period=nothing)
+
+    _in_filename = in_filename*(in_filename[end-3:end]==".vtk" ? "" : ".vtk")
+
+    # Time type: 1==Constant, 2==periodic, 3==aperiodic
+    nums==nothing ? Tflag = 1 :
+    period!=nothing ? Tflag = 2 :
+                        Tflag = 3
+
+    # Read first file
+    (points, cells, cell_types,
+        data) = gt.read_vtk(Tflag==1 ? _in_filename :
+                                replace(_in_filename, ".vtk", ".$(nums[1]).vtk");
+                                path=read_path)
+
+    nnodes = size(points, 2)
+    ncells = size(cells, 1)
+
+    # Create output file
+    f = open(joinpath(save_path, out_filename), "w")
+
+    # Binary / ASCII printing
+    prnt(x) = wopbin ? write(f, x) : print(f, x)
+    prntln(x) = wopbin ? write(f, x) : print(f, x, "\n")
+
+    # Convertion to 4-bytes numbers
+    # NOTE: 4 bytes = 4*8 bites = 32 bites
+    fl(x) = Float32(x)
+    nt(x) = Int32(x)
+    # Convertion to n-bytes string
+    st(x::String, n) = x * " "^(n-length(x))
+
+    # Magic number
+    prntln(nt(42))
+    # Version number
+    prnt(nt(1))
+    prntln(nt(0))
+    # Units for Tecplot
+    prntln(st("N/m^2", 32))
+    # Comments
+    prntln(st("Geometry input file for PSU-WOPWOP (Format v1.0)\n"*
+              "------------------------------------------------\n"*
+              "Created by FLOWNoise (written by Eduardo Alvarez)\n"*
+              "https://github.com/byuflowlab/FLOWNoise\n"*
+              "Creation date: $(Dates.now())\n"*
+              "Units: SI\n"*
+              "Format: Unstructured grid, face-centered", 1024))
+
+    # Format string
+    prntln(nt(1))               # Geometry file flag
+    prntln(nt(1))               # Number of zones
+    prntln(nt(2))               # 1==structured, 2==unstructured
+    prntln(nt(Tflag))           # Geometry 1==constant, 2==periodic, 3==aperiodic
+    prntln(nt(2))               # Normal vectors 1==node, 2==face
+    prntln(nt(1))               # Floating point 1==single, 2==double
+    prntln(nt(0))               # iblank values 1==included, 0==not
+    prntln(nt(0))               # WOPWOP secret conspiracy
+
+    # ----------------- PATCH ----------------------------------------
+    # Name
+    prntln(st("vtkpatch", 32))
+    # TimeInformation
+    if Tflag==2
+        # Period
+        prntln(fl(period))
+        # nt
+        prntln(nt( length(nums) ))
+    elseif Tflag==3
+        # nt
+        prntln(nt( length(nums) ))
+    end
+    # nbNodes
+    prntln(nt( nnodes ))
+    # nbFaces
+    prntln(nt( ncells ))
+    # Connectivity
+    # NOTE: Here I assume that connectivity is the same in all VTK files
+    for cell in cells
+        prnt(nt( size(cell, 1) ))         # Number of nodes in this cell
+        # for pi in reverse(cell)         # Clockwise node ordering
+        for pi in cell                    # NOTE: Turns out that FLOWVLM's VTKs are already clockwise
+            prnt(nt( pi+1 ))              # 1-indexed node index
+        end
+        if !wopbin; prntln(""); end;
+    end
+
+
+
+    # ----------------- DATA OF PATCH -------------------------------
+
+    Ns = zeros(3, ncells)
+
+    for ti in 1:(Tflag==1 ? 1 : length(nums))
+        # Read vtk
+        if ti != 1
+            # NOTE: Here I assume that `nums` is given sequentally
+            (points, cells, cell_types,
+             data) = gt.read_vtk(replace(_in_filename, ".vtk", ".$(nums[ti]).vtk");
+                                    path=read_path)
+        end
+
+        # Calculate normals
+        for (ci, cell) in enumerate(cells)
+
+            if length(cell) != 4
+                error("Only quadrilateral cells are supported!")
+            end
+
+            crss1 = -cross( points[:, cell[2]+1] - points[:, cell[1]+1],
+                            points[:, cell[3]+1] - points[:, cell[1]+1])
+            crss2 = -cross( points[:, cell[4]+1] - points[:, cell[3]+1],
+                            points[:, cell[1]+1] - points[:, cell[3]+1])
+
+            Ns[:, ci] .= crss1/2 + crss2/2
+        end
+
+        # Time signature
+        if Tflag != 1
+            prntln(fl( (tf-t0)*(ti-1)/(length(nums)-1) ))
+        end
+
+        # nbNodes floating point x coordinates
+        # nbNodes floating point y coordinates
+        # nbNodes floating point z coordinates
+        for k in 1:3
+            for pi in 1:nnodes
+                prntln(fl(points[k, pi]))
+            end
+        end
+
+        # nbFaces floating point normal vector x coordinates
+        # nbFaces floating point normal vector y coordinates
+        # nbFaces floating point normal vector z coordinates
+        for k in 1:3
+            for j in 1:ncells
+                prntln(fl(Ns[k, j]))
+            end
+        end
+    end
+
+    close(f)
+
+    return nothing
+end
