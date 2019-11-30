@@ -535,7 +535,7 @@ function geomwopwop2vtk(filename; read_path="", save_path=nothing,
     end
 
     # Format cells as vtks (0-indexed)
-    vtk_cells = [[[ind-1 for ind in cell] for cell in connectivity[zi]] for zi in 1:nz]
+    vtk_cells = [[Int[ind-1 for ind in cell] for cell in connectivity[zi]] for zi in 1:nz]
 
     # Zone of every point
     point_zones = [[zi for pi in 1:nbnodes[zi]] for zi in 1:nz]
@@ -631,7 +631,7 @@ them into a single file in WOPWOP's geometry format v1.0.
 """
 function vtk2wopwop(in_filename, out_filename; read_path="", nums=nothing,
                             save_path="", wopbin=true,
-                            t0=0.0, tf=1.0, period=nothing)
+                            t0=0.0, tf=1.0, period=nothing, compact=false)
 
     _in_filename = in_filename*(in_filename[end-3:end]==".vtk" ? "" : ".vtk")
 
@@ -677,21 +677,24 @@ function vtk2wopwop(in_filename, out_filename; read_path="", nums=nothing,
               "https://github.com/byuflowlab/FLOWNoise\n"*
               "Creation date: $(Dates.now())\n"*
               "Units: SI\n"*
-              "Format: Unstructured grid, face-centered", 1024))
+              (
+                compact ? "Format: Structured grid, node-centered" :
+                          "Format: Unstructured grid, face-centered"
+              ), 1024))
 
     # Format string
     prntln(nt(1))               # Geometry file flag
     prntln(nt(1))               # Number of zones
-    prntln(nt(2))               # 1==structured, 2==unstructured
+    prntln(nt(2^!compact))      # 1==structured, 2==unstructured
     prntln(nt(Tflag))           # Geometry 1==constant, 2==periodic, 3==aperiodic
-    prntln(nt(2))               # Normal vectors 1==node, 2==face
+    prntln(nt(2^!compact))      # Normal vectors 1==node, 2==face
     prntln(nt(1))               # Floating point 1==single, 2==double
     prntln(nt(0))               # iblank values 1==included, 0==not
     prntln(nt(0))               # WOPWOP secret conspiracy
 
     # ----------------- PATCH ----------------------------------------
     # Name
-    prntln(st("vtkpatch", 32))
+    prntln(st(compact ? "vtkcompactpatch" : "vtkpatch", 32))
     # TimeInformation
     if Tflag==2
         # Period
@@ -702,26 +705,34 @@ function vtk2wopwop(in_filename, out_filename; read_path="", nums=nothing,
         # nt
         prntln(nt( length(nums) ))
     end
-    # nbNodes
-    prntln(nt( nnodes ))
-    # nbFaces
-    prntln(nt( ncells ))
-    # Connectivity
-    # NOTE: Here I assume that connectivity is the same in all VTK files
-    for cell in cells
-        prnt(nt( size(cell, 1) ))         # Number of nodes in this cell
-        # for pi in reverse(cell)         # Clockwise node ordering
-        for pi in cell                    # NOTE: Turns out that FLOWVLM's VTKs are already clockwise
-            prnt(nt( pi+1 ))              # 1-indexed node index
+
+    if compact
+        # iMax
+        prntln(nt( 1 ))
+        # jMax
+        prntln(nt( nnodes ))
+    else
+        # nbNodes
+        prntln(nt( nnodes ))
+        # nbFaces
+        prntln(nt( ncells ))
+        # Connectivity
+        # NOTE: Here I assume that connectivity is the same in all VTK files
+        for cell in cells
+            prnt(nt( size(cell, 1) ))         # Number of nodes in this cell
+            # for pi in reverse(cell)         # Clockwise node ordering
+            for pi in cell                    # NOTE: Turns out that FLOWVLM's VTKs are already clockwise
+                prnt(nt( pi+1 ))              # 1-indexed node index
+            end
+            if !wopbin; prntln(""); end;
         end
-        if !wopbin; prntln(""); end;
     end
 
 
 
     # ----------------- DATA OF PATCH -------------------------------
 
-    Ns = zeros(3, ncells)
+    Ns = zeros(3, compact ? nnodes : ncells)
 
     for ti in 1:(Tflag==1 ? 1 : length(nums))
         # Read vtk
@@ -730,21 +741,39 @@ function vtk2wopwop(in_filename, out_filename; read_path="", nums=nothing,
             (points, cells, cell_types,
              data) = gt.read_vtk(replace(_in_filename, ".vtk", ".$(nums[ti]).vtk");
                                     path=read_path)
+
+            Ns[:] = 0
         end
 
         # Calculate normals
-        for (ci, cell) in enumerate(cells)
+        if compact
+            # NOTE: Here I assume that the lifting line is defined sequentially
+            for pi in 1:nnodes-1
+                # NOTE: Here I give it the vector that connect the points
+                # as the normal, crossing my fingers that PSU-WOPWOP will never
+                # use the actual normal direction for anything (I think that
+                # it only expects the magnitude to be the length of this segment
+                # of the line)
+                D = points[pi+1] - points[pi]
 
-            if length(cell) != 4
-                error("Only quadrilateral cells are supported!")
+                # Here I split the length in two for each node
+                Ns[:, pi] += D/2
+                Ns[:, pi+1] += D/2
             end
+        else
+            for (ci, cell) in enumerate(cells)
 
-            crss1 = -cross( points[:, cell[2]+1] - points[:, cell[1]+1],
-                            points[:, cell[3]+1] - points[:, cell[1]+1])
-            crss2 = -cross( points[:, cell[4]+1] - points[:, cell[3]+1],
-                            points[:, cell[1]+1] - points[:, cell[3]+1])
+                if length(cell) != 4
+                    error("Only quadrilateral cells are supported!")
+                end
 
-            Ns[:, ci] .= crss1/2 + crss2/2
+                crss1 = -cross( points[:, cell[2]+1] - points[:, cell[1]+1],
+                                points[:, cell[3]+1] - points[:, cell[1]+1])
+                crss2 = -cross( points[:, cell[4]+1] - points[:, cell[3]+1],
+                                points[:, cell[1]+1] - points[:, cell[3]+1])
+
+                Ns[:, ci] .= crss1/2 + crss2/2
+            end
         end
 
         # Time signature
@@ -761,12 +790,24 @@ function vtk2wopwop(in_filename, out_filename; read_path="", nums=nothing,
             end
         end
 
-        # nbFaces floating point normal vector x coordinates
-        # nbFaces floating point normal vector y coordinates
-        # nbFaces floating point normal vector z coordinates
-        for k in 1:3
-            for j in 1:ncells
-                prntln(fl(Ns[k, j]))
+        if compact
+            # imax × jmax floating point normal vector x coordinates
+            # imax × jmax floating point normal vector y coordinates
+            # imax × jmax floating point normal vector z coordinates
+            for k in 1:3
+                for j in 1:nnodes
+                    prntln(fl(Ns[k, j]))
+                end
+            end
+
+        else
+            # nbFaces floating point normal vector x coordinates
+            # nbFaces floating point normal vector y coordinates
+            # nbFaces floating point normal vector z coordinates
+            for k in 1:3
+                for j in 1:ncells
+                    prntln(fl(Ns[k, j]))
+                end
             end
         end
     end
