@@ -754,7 +754,7 @@ function vtk2wopwop(in_filename, out_filename; read_path="", nums=nothing,
                 # use the actual normal direction for anything (I think that
                 # it only expects the magnitude to be the length of this segment
                 # of the line)
-                D = points[pi+1] - points[pi]
+                D = points[:, pi+1] - points[:, pi]
 
                 # Here I split the length in two for each node
                 Ns[:, pi] += D/2
