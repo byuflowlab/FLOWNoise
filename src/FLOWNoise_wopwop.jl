@@ -342,10 +342,13 @@ function wopwop2vtk(grid::gt.AbstractGrid, outputname::String, save_path::String
 
     end
 
+    str = outputname*"...vtk;"
+
     if paraview
-        str = joinpath(save_path, outputname*"...vtk;")
-        run(`paraview --data=$str`)
+        run(`paraview --data=$(save_path)/$(str)`)
     end
+
+    return str
 end
 
 """
@@ -356,7 +359,7 @@ Converts an input patch file in PSU-WOPWOP format to VTK format.
 """
 function geomwopwop2vtk(filename; read_path="", save_path=nothing,
                         pref_save_fname::String="automatic", paraview=false,
-                        verbose=false, v_lvl=0)
+                        verbose=false, v_lvl=0, loading_file=nothing)
 
     # String carrying vtk files
     if save_path!=nothing && paraview
@@ -374,6 +377,15 @@ function geomwopwop2vtk(filename; read_path="", save_path=nothing,
         end
     else
         preff = pref_save_fname
+    end
+
+    # Open loading file
+    if loading_file != nothing
+        (load_hdr, load_names,
+        load_timeinfo, load_dims,
+        load_time,
+        load_data) = read_wopwoploading(loading_file; read_path=read_path,
+                                            verbose=verbose, v_lvl=v_lvl+1)
     end
 
     # Open PSU-WOPWOP file
@@ -415,14 +427,19 @@ function geomwopwop2vtk(filename; read_path="", save_path=nothing,
         println("\t"^(v_lvl)*"$(header[12])\t # something")
     end
 
-    # Error cases: Current implementation only takes unstructured, constant,
-    # face centered patches
+    # Error cases:
     Int(header[2][1]) != 1 ? error("Only v1.0 is supported") :
     # Int(header[7][1]) != 2 ? error("Only unstructured patches are supported") :
     # Int(header[8][1]) != 1 ? error("Only constant patches are supported") :
     # Int(header[9][1]) != 2 ? error("Only face-centered patches are supported") :
     Int(header[10][1]) != 1 ? error("Only single-precision floats are supported") :
     nothing;
+
+    if loading_file != nothing
+        if load_hdr["structured"] == (Int(header[7][1]) == 1)
+            error("Geometry and loading must both be either structured or unstructured!")
+        end
+    end
 
     Tflag = Int(header[8][1])       # 1==Constant, 2==Periodic, 3==Aperiodic
 
@@ -598,6 +615,29 @@ function geomwopwop2vtk(filename; read_path="", save_path=nothing,
                     push!(point_data, Dict( "field_name" => "normals",
                                             "field_type" => "vector",
                                             "field_data" => vtk_normals))
+                end
+
+                # Loading data
+                if loading_file != nothing
+
+                    # NOTE: Here I assume that the loading file has data for
+                    # the same number of zones that the geometry file (even
+                    # though that is not necessarely true, but it is for
+                    # files generated in my framework)
+                    loading_vectors = [load_data[zonei][:, ni, ti] for ni in 1:size(load_data[zonei], 2)]
+
+                    loading_field = Dict(   "field_name"  => load_names[zonei],
+                                            "field_type" => "vector",
+                                            "field_data" => loading_vectors)
+
+                    if load_hdr["node-centered"]
+                        push!(point_data, loading_field)
+                    else
+                        if cell_data == nothing
+                            cell_data = []
+                        end
+                        push!(cell_data, loading_field)
+                    end
                 end
 
                 filename = preff*"_"*replace(names[zonei], " ", "")
