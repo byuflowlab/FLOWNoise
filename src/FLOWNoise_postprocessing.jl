@@ -26,9 +26,8 @@ Converts pressure from time domain to frequency domain, calculates overall sound
                                     "Normal", "A-weighted"
 
 """
-function pressure_time2frequency(time::Array{Real, 1}, pressure::Array{Real, 1}, 
-                                    windowtype::String="None",
-                                    SPLtype::String="A-weighted")
+function pressure_time2frequency(time::Array{Float64, 1}, pressure::Array{Float64, 1}, 
+                                    windowtype::String, SPLtype::String)
     
     #Define constants
     K1 = 2.243*10^16
@@ -45,10 +44,15 @@ function pressure_time2frequency(time::Array{Real, 1}, pressure::Array{Real, 1},
     N = length(time) # number of time points
     M = convert(Int64,floor(N/2 + 1)) # number of frequency bins of type Int64 for indexing later
 
+    # println("Pressure before windowing:")
+    # println(pressure)
     # Window data if specified - treats data as periodic for fourier transform
     if windowtype != "None"
-        pressure = windowdata!(time, pressure, windowtype)
+        pressure = FLOWNoise.windowdata!(time, pressure, windowtype)
     end
+
+    # println("Pressure after windowing:")
+    # println(pressure)
 
     # Use FFTW package to perform fast fourier transform on pressure data
     Y = FFTW.fft(pressure)
@@ -87,13 +91,13 @@ function pressure_time2frequency(time::Array{Real, 1}, pressure::Array{Real, 1},
         # global p2 += wa[m] * abs2(Pc[m]) #overall mean square pressure
         p2 += wa[m] * abs2(Pc[m]) #overall mean square pressure
         p2local[m] = 0.5 * wa[m] * abs2(Pc[m]) #local mean square pressure for specific frequency
-        SPLlocal_dB[m] = 10 * log(10,p2local[m]/((20*10^-6)^2)) #local SPL
+        SPLlocal_dB[m] = 10.0 * log(10,p2local[m]/((20*10.0^-6)^2)) #local SPL
 
     end
 
     p2 *= 0.5
 
-    OASPL_dB = 10 * log(10,p2/(20*10^-6)^2) # overall sound pressure level in dB 
+    OASPL_dB = 10.0 * log(10,p2/(20*10.0^-6)^2) # overall sound pressure level in dB 
 
     return SPLlocal_dB, OASPL_dB
 end
@@ -116,7 +120,7 @@ NOTES:
 * Windowing changes the amplitude of the data in the time history, so a scaling factor must also be used, depending on which type of windowing is being performed.
 * Windowing adds certain frequencies to the spectrum. Do not trust windoewed time signals which have frequencies closer than five bins away from both ends of the spectrum's frequency limits.
 """
-function windowdata!(time::Array{Real, 1}, data::Array{Real, 1}, windowtype::String="Hann")
+function windowdata!(time, data, windowtype::String="Hann")
     T = time[end]
     tindex = 1
     # Apply windowing
@@ -138,6 +142,8 @@ function windowdata!(time::Array{Real, 1}, data::Array{Real, 1}, windowtype::Str
         # global tindex += 1
         tindex += 1
     end # TODO: broadcast this in the future
+
+    return data
 
 #TODO: currently not solving problem in case 2 not matching up
 end

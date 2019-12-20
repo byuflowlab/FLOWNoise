@@ -1,0 +1,5 @@
+ TITLE="PSU-WOPWOP"
+VARIABLES= "SPL Time (s)", "ThicknessSPL (dB, re20<greek>m</greek>Pa)SPL (dB)", "LoadingSPL (dB, re20<greek>m</greek>Pa)SPL (dB)", "TotalSPL (dB, re20<greek>m</greek>Pa)SPL (dB)", "ThicknessSPL (dBA, re20<greek>m</greek>Pa)SPL (dB)", "LoadingSPL (dBA, re20<greek>m</greek>Pa)SPL (dB)", "TotalSPL (dBA, re20<greek>m</greek>Pa)SPL (dB)"
+TEXT X=100 Y=95 AN=HEADRIGHT T="SPL Time (s) vs \\nThicknessSPL (dB, re20<greek>m</greek>Pa)SPL (dB)\\nLoadingSPL (dB, re20<greek>m</greek>Pa)SPL (dB)\\nTotalSPL (dB, re20<greek>m</greek>Pa)SPL (dB)\\nThicknessSPL (dBA, re20<greek>m</greek>Pa)SPL (dB)\\nLoadingSPL (dBA, re20<greek>m</greek>Pa)SPL (dB)\\nTotalSPL (dBA, re20<greek>m</greek>Pa)SPL (dB)\\n "
+
+ 0.19522931E+00  0.50733128E+02  0.46028275E+02  0.49159359E+02  0.27978317E+02  0.24402813E+02  0.20864286E+02  
