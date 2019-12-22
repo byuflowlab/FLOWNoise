@@ -21,7 +21,8 @@
 """
 function generate_WAV(pressuredata::Array{T, 1}, in_samplerate::Real,
                         filename::String; path="", out_samplerate::Real=32000,
-                        secs::Real=4.0, usefreqs::Real=0.75) where {T<:Real}
+                        secs::Real=4.0, usefreqs::Real=0.75, plot_verif=false
+                            ) where {T<:Real}
 
     # Calculate FFT coefficients
     fftdata = fft(pressuredata)
@@ -39,6 +40,19 @@ function generate_WAV(pressuredata::Array{T, 1}, in_samplerate::Real,
 
     # Write wave to WAV file
     WAV.wavwrite(y, joinpath(path, filename), Fs=out_samplerate)
+
+    if plot_verif
+        period = length(pressuredata)/in_samplerate  # Period of input wave
+        maxt = 4*period                             # Maximum time to plot
+        maxi = ceil(Int, maxt*out_samplerate)       # Max index to plot
+        plt.plot((0:length(pressuredata)-1)/in_samplerate, pressuredata, "-r",
+                                                                  label="Input")
+        plt.plot((0:maxi-1)/out_samplerate-period, maxy*y[1:maxi], ",k",
+                                                              label="Resampled")
+        plt.xlabel("Time (s)")
+        plt.ylabel("Amplitude")
+        plt.legend(loc="center left", bbox_to_anchor=(1, 0.5), frameon=false)
+    end
 
     return y, out_samplerate
 end
@@ -72,5 +86,7 @@ function sampleiFFT(t::Real, fftdata::Array{C, 1}, fftsamplerate::Real;
 
     end
 
-    return val/length(fftdata)
+    # NOTE: I'm not sure why I need to multiply by 2 here, but if I don't then
+    # I get half the amplitude of the input
+    return 2*val/length(fftdata)
 end

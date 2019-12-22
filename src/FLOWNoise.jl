@@ -18,6 +18,9 @@ gt = GeometricTools
 # ------------ GENERIC MODULES -------------------------------------------------
 import FFTW
 import WAV
+import PyPlot
+
+const plt = PyPlot
 
 # ------------ GLOBAL VARIABLES ------------------------------------------------
 module_path = splitdir(@__FILE__)[1]                # Path to this module
