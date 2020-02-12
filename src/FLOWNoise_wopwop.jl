@@ -800,6 +800,12 @@ function vtk2wopwop(in_filename, out_filename; read_path="", nums=nothing,
                 Ns[:, pi] += D/2
                 Ns[:, pi+1] += D/2
             end
+
+            # # Here I'm normalizing the normal by the length
+            # for pi in 1:nnodes
+            #     Ns[:, pi] /= norm(Ns[:, pi])
+            # end
+
         else
             for (ci, cell) in enumerate(cells)
 
