@@ -41,6 +41,9 @@ Returns a spherical grid of observers.
 * Elevation angles go from 0 to 180, meanwhile azimuth angles go from 0 to 360.
 * To generate a half sphere use `phimax=180`.
 * Give `nphi=2*ntht` to get cells of aspect ratio 1.
+* A circular line (instead of a spherical surface/volume) can be generated with
+    `nphi=0` and `nR=0`. This will return a circular line laying on the
+    zx-plane. Use `C` and `rotation` to translate a rotate the line.
 """
 function observer_sphere(R::Real, nR::Int, ntht::Int, nphi::Int;
                             Rmin::Real=0.1,
@@ -59,9 +62,19 @@ function observer_sphere(R::Real, nR::Int, ntht::Int, nphi::Int;
     P_max = [pi/180*thtmax, pi/180*phimax, R]   # Upper bound (theta, phi, r)
     NDIVS = [ntht, nphi, nR]                    # Number of divisions (cells)
                                                 #  of (theta, phi, r)
-    loop_dim = 2*Int(P_min[2]==0 && P_max[2]==2*pi) # Coordinate to loop (0==no looping)
 
-    if NDIVS[3]==0; P_min[3]=P_max[3]; end;
+    # Case that grid is a circular line
+    if nphi==0 && nR==0
+        P_min[3] = P_max[3]
+        P_min[2] = P_max[2]
+        loop_dim = Int(P_min[1]==0 && P_max[1]==2*pi) # Coordinate to loop (0==no looping)
+
+    else
+
+        if NDIVS[3]==0; P_min[3]=P_max[3]; end;
+        loop_dim = 2*Int(P_min[2]==0 && P_max[2]==2*pi) # Coordinate to loop (0==no looping)
+
+    end
 
     # Generates parametric (theta, phi, r) grid
     grid = gt.Grid(P_min, P_max, NDIVS, loop_dim)
