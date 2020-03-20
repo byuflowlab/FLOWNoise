@@ -1,4 +1,4 @@
-# FLOW Noise
+# FLOWNoise
 
 Tools for computational aeroacoustics (preprocessing, calculations, and
 postprocessing) developed at BYU's FLOW lab.
@@ -17,6 +17,8 @@ postprocessing) developed at BYU's FLOW lab.
   * [Rotor-on-rotor aeroacoustic interactions](https://github.com/byuflowlab/alvarezcritchfield2020-noise-prop-on-prop)
   * [BPM code for turbine acoustics](https://github.com/byuflowlab/bpm-turbine-acoustics)
 
+<img src="docs/vid/cfdnoise_ningdji_multi_005D_03_15.gif" alt="Vid here" style="width: 900px;"/>
+<img src="docs/vid/cfdnoise_ningdji_multi_005D_03_18.gif" alt="Vid here" style="width: 900px;"/>
 
 # Authorship
   * Authors   : Eduardo J Alvarez and Tyler Critchfield

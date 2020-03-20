@@ -304,10 +304,12 @@ WOPWOP used as an observer to generate the output fields.
 """
 function wopwop2vtk(grid::gt.AbstractGrid, outputname::String, save_path::String;
                         read_path="", prompt=true,
-                        verbose=true, v_lvl=0,
+                        verbose=true, v_lvl=0, createpath=true,
                         paraview=false)
 
-    gt.create_path(save_path, prompt)
+    if createpath
+        gt.create_path(save_path, prompt)
+    end
 
     header, field = read_wopwopoutput(outputname; read_path=read_path,
                                                 verbose=verbose, v_lvl=v_lvl)
