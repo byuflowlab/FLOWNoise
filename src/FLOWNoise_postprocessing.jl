@@ -10,6 +10,67 @@
 =###############################################################################
 
 
+"Adds two sound pressure levels properly."
+function addSPL(x, y)
+
+    sum = 10 * log10(10 .^ (x/10) + 10 .^ (y/10))
+
+    return sum
+end
+
+"Adds a vector of SPLs."
+function addSPL(x::Array{Real, 1})
+
+    sum = 10 * log10(sum(10 .^ (x/10)))
+
+    return sum
+end
+
+
+"SPL spectrum to OASPL"
+function SPLtoOASPL(freqs,          # frequencies corresponding to spls 
+                    spls)           # vector of spls over the spectrum
+
+    # Convert SPLs to pressure spectrum
+    pref = 20e-6 # reference pressure
+    ps = pref * 10 .^ (spls / 10)
+
+    # integrate over frequency range
+    p_integrated = math.trapz(freqs, ps)
+
+    # convert integrated value to decibels
+    oaspl = 10 * log10(p_integrated/pref)
+
+    return oaspl
+end
+
+"Takes in an unweighted SPL in decibels and frequency and returns the A-weighted SPL in decibels"
+function aWeight(freq,          # frequency
+                spl)            # unweighted sound pressure level at this frequency
+
+    # constants defined in wopwop user manual
+    K1 = 2.243e16 #s^-4
+    K3 = 1.562
+    f1 = 20.599 # Hz
+    f2 = 107.653 # Hz
+    f3 = 737.862 # Hz
+    f4 = 12194.22 # Hz
+
+    pref = 20e-6 #may not need?
+
+    wc = K1 * freq .^ 4 ./ ((freq .^ 2 + f1^2) .^ 2 .* (freq .^ 2 + f4^2) .^ 2) # C-weighting function
+    wa = wc .* K3 .* freq .^ 4 ./ ((freq .^ 2 + f2^2) .* (freq .^ 2 + f3^2)) # A-weighting function
+
+    p = pref * 10.0 .^ (spl / 10)
+    pa = wa .* p
+
+    # Back to spl
+    spla = 10 * log10.(pa / pref)
+
+    return spla
+end
+
+
 """
     `pressure_time2frequency(time, pressure, windowtype, SPLtype)`
 
