@@ -15,10 +15,6 @@ module FLOWNoise
 import GeometricTools
 gt = GeometricTools
 
-# # FLOWMath https://github.com/byuflowlab/FLOWMath.jl
-# #! To make compatible with v0.6, comment out lines 6 and 7 in the module that include the roots.jl file and export the brent method
-# import FLOWMath
-# math = FLOWMath
 
 # ------------ GENERIC MODULES -------------------------------------------------
 import FFTW

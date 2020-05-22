@@ -10,39 +10,44 @@
 =###############################################################################
 
 
-"Adds two sound pressure levels properly."
+"Adds two sound pressure levels together."
 function addSPL(x, y)
 
-    sum = 10 * log10(10 .^ (x/10) + 10 .^ (y/10))
-
-    return sum
+    return 10 * log10(10 .^ (x/10) + 10 .^ (y/10))
 end
 
-"Adds a vector of SPLs."
-function addSPL(x::Array{Real, 1})
+"Adds a vector of sound pressure levels."
+function addSPL(x)
 
-    sum = 10 * log10(sum(10 .^ (x/10)))
-
-    return sum
+    return 10 * log10(sum(10 .^ (x/10)))
 end
 
 
 "SPL spectrum to OASPL"
-function SPLtoOASPL(freqs,          # frequencies corresponding to spls 
-                    spls)           # vector of spls over the spectrum
+function SPLtoOASPL(spls)           # vector of spls over the spectrum
 
-    # Convert SPLs to pressure spectrum
-    pref = 20e-6 # reference pressure
-    ps = pref * 10 .^ (spls / 10)
+    # don't need a reference pressure when converting back and forth
+    ps = 10 .^ (spls / 10)
+    ps_integrated = sum(ps)
 
-    # integrate over frequency range
-    p_integrated = math.trapz(freqs, ps)
-
-    # convert integrated value to decibels
-    oaspl = 10 * log10(p_integrated/pref)
+    oaspl = 10 * log10(ps_integrated)
 
     return oaspl
 end
+
+
+"Frequency domain ---> time domain"
+function spl2pressure(spls)
+
+    pref = 20e-6 # reference pressure
+    p2s = pref * 10 .^ (spls / 10.0)
+
+    # inverse fourier transform
+    ps = FFTW.ifft(p2s)
+
+    return ps
+end
+
 
 "Takes in an unweighted SPL in decibels and frequency and returns the A-weighted SPL in decibels"
 function aWeight(freq,          # frequency
