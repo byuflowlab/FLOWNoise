@@ -104,14 +104,19 @@ function prepare_test(filepath, windowtype)
     time_3, thickness_OASPLA_actual, loading_OASPLA_actual, total_OASPLA_actual = sort_data(data, file_type)
 
     # Convert from time to frequency domain
-    SPLtype = "Normal"
-    thickness_dB_calc, thickness_OASPL_calc = FLOWNoise.pressure_time2frequency(time, thickness, windowtype, SPLtype)
-    loading_dB_calc, loading_OASPL_calc = FLOWNoise.pressure_time2frequency(time, loading, windowtype, SPLtype)
-    total_dB_calc, total_OASPL_calc = FLOWNoise.pressure_time2frequency(time, total, windowtype, SPLtype)
-    SPLtype = "A-weighted"
-    thickness_dBA_calc, thickness_OASPLA_calc = FLOWNoise.pressure_time2frequency(time, thickness, windowtype, SPLtype)
-    loading_dBA_calc, loading_OASPLA_calc = FLOWNoise.pressure_time2frequency(time, loading, windowtype, SPLtype)
-    total_dBA_calc, total_OASPLA_calc = FLOWNoise.pressure_time2frequency(time, total, windowtype, SPLtype)
+    thickness_dB_calc = FLOWNoise.pressure2SPL(time, thickness)
+    thickness_OASPL_calc = FLOWNoise.SPL2OASPL(thickness_dB_calc)
+    loading_dB_calc = FLOWNoise.pressure2SPL(time, loading)
+    loading_OASPL_calc = FLOWNoise.SPL2OASPL(loading_dB_calc)
+    total_dB_calc = FLOWNoise.pressure2SPL(time, total)
+    total_OASPL_calc = FLOWNoise.SPL2OASPL(total_dB_calc)
+
+    thickness_dBA_calc = FLOWNoise.pressure2SPL(time, thickness, AweightingFlag=true)
+    thickness_OASPLA_calc = FLOWNoise.SPL2OASPL(thickness_dBA_calc)
+    loading_dBA_calc = FLOWNoise.pressure2SPL(time, loading, AweightingFlag=true)
+    loading_OASPLA_calc = FLOWNoise.SPL2OASPL(loading_dBA_calc)
+    total_dBA_calc = FLOWNoise.pressure2SPL(time, total, AweightingFlag=true)
+    total_OASPLA_calc = FLOWNoise.SPL2OASPL(total_dBA_calc)
 
     println("Actual thickness OASPL = ", thickness_OASPL_actual)
     println("Calculated thickness OASPL = ", thickness_OASPL_calc)
