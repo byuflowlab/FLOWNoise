@@ -15,6 +15,7 @@ module FLOWNoise
 import GeometricTools
 gt = GeometricTools
 
+
 # ------------ GENERIC MODULES -------------------------------------------------
 import FFTW
 import WAV
