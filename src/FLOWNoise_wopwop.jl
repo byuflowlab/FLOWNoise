@@ -303,6 +303,7 @@ WOPWOP used as an observer to generate the output fields.
 
 """
 function wopwop2vtk(grid::gt.AbstractGrid, outputname::String, save_path::String;
+                        pref="",
                         read_path="", prompt=true,
                         verbose=true, v_lvl=0, createpath=true,
                         paraview=false)
@@ -340,11 +341,11 @@ function wopwop2vtk(grid::gt.AbstractGrid, outputname::String, save_path::String
         end
 
         # Save vtk of this time step
-        gt.save(grid, outputname; path=save_path, num=t-1)
+        gt.save(grid, pref*outputname; path=save_path, num=t-1)
 
     end
 
-    str = outputname*"...vtk;"
+    str = pref*outputname*"...vtk;"
 
     if paraview
         run(`paraview --data=$(save_path)/$(str)`)
