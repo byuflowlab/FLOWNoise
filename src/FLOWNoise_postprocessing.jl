@@ -13,11 +13,23 @@
 "Adds two sound pressure levels together."
 function addSPL(x, y)
 
+    #* For better understanding of what's going on, the following commented 
+    #* steps are equivalent to the returned line
+    # pref = 2e-5
+
+    # rms1 = pref^2 * 10 ^ (oaspl1 / 10) # convert to root mean square pressure
+    # rms2 = pref^2 * 10 ^ (oaspl2 / 10)
+    # rms_combined = rms1 + rms2 # add together
+
+    # oaspl_combined = 10 * log10(rms_combined / (pref^2)) # convert back to decibels
+
+    # return oaspl_combined
+
     return 10 * log10(10 .^ (x/10) + 10 .^ (y/10))
 end
 
 "Adds a vector of sound pressure levels."
-function addSPL(x)
+function addSPL(x::AbstractArray)
 
     return 10 * log10(sum(10 .^ (x/10)))
 end
@@ -57,7 +69,11 @@ end
 function aWeight(freq,                  # frequency
                 spl)                    # unweighted sound pressure level at each frequency
 
-    # constants defined in wopwop user manual
+    if size(freq, 1) != size(spl, 1) # ensure vectors have same dimensions
+        spl = spl'
+    end
+
+    # unchanging constants defined in wopwop user manual
     K1 = 2.243e16 #s^-4
     K3 = 1.562
     f1 = 20.599 # Hz
@@ -123,7 +139,53 @@ function pressure2SPL(time,                     # time history
 
         return oaspl
     else
-        return spls
+        return f, spls
+    end
+end
+
+
+"Same as function above, but weights the SPLs based on the frequency bin width.
+
+Note: Intuitively this seems like it should work better. It will not match OASPL output from PSU-WOPWOP."
+function pressure2SPL_weighted(time,                     # time history
+                                p;                      # pressure (Pa) at each time step
+                                AweightingFlag=false,   # SPL values are A-weighted
+                                oasplFlag=false)        # returns scalar OASPL en lieu of SPL spectrum
+
+    pref = 2e-5
+
+    deltat = time[2] - time[1]
+    T = time[end]
+    deltaf = 1/T
+    N = length(time)
+    M = convert(Int64, floor(N/2 + 1))
+
+    x = 0:M-1
+    f = x * deltaf # frequencies
+
+    Y = FFTW.fft(p)
+    Y = Y[1:M] # cutoff frequencies higher than Nyquist frequency
+
+    Pc = Y * 2 * deltat / T
+    Pc[1] *= 0.5 # complex pressure
+
+    p2local = 0.5 * abs2.(Pc) * deltaf #mean square pressure
+    spls = 10 * log10.(p2local / pref^2) #sound pressure level
+
+    if AweightingFlag == true
+        spls = aWeight(f, spls)
+        if oasplFlag
+            p2local = pref^2 * 10 .^ (spls / 10)
+        end
+    end
+
+    if oasplFlag
+        p2 = 1.0 * sum(p2local)
+        oaspl = 10 * log10(p2 / pref^2)
+
+        return oaspl
+    else
+        return f, spls
     end
 end
 
