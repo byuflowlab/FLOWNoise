@@ -1,5 +1,5 @@
 import FLOWNoise
-using Base.Test
+using Test
 include("testingfunctions.jl")
 
 @testset "Post-processing: Time to frequency domain" begin

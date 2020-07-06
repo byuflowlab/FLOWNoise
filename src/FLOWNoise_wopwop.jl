@@ -38,7 +38,7 @@ function read_wopwopoutput(outputname::String; read_path="", verbose=true,
         f = open(joinpath(read_path, outputname*".tec"), "r")
 
         readline(f) # Title
-        header = split(replace(readline(f)[13:end], "\"", ""), ", ")
+        header = split(replace(readline(f)[13:end], "\"" => ""), ", ")
         readline(f) # Info
         readline(f) # Empty line
 
@@ -58,12 +58,12 @@ function read_wopwopoutput(outputname::String; read_path="", verbose=true,
             end
 
             # Get rid of double spaces
-            while contains(ln, "  ")
-                ln = replace(ln, "  ", " ")
+            while occursin("  ", ln)
+                ln = replace(ln, "  " => " ")
             end
 
             # Parse data
-            push!(data, parse.(split(ln, " ")))
+            push!(data, Meta.parse.(split(ln, " ")))
         end
 
         field = hcat(data...)'
@@ -82,13 +82,13 @@ function read_wopwopoutput(outputname::String; read_path="", verbose=true,
         # Remove invalid characters from headers
         for str in [" ", "(", ")"]
             for i in 1:length(header)
-                header[i] = replace(header[i], str, "")
+                header[i] = replace(header[i], str => "")
             end
         end
 
         # Read function file
         f = open(joinpath(read_path, outputname*".fn"), "r")
-        imax, jmax, tmax, fieldmax = [parse(elem) for elem in split(readline(f))]
+        imax, jmax, tmax, fieldmax = [Meta.parse(elem) for elem in split(readline(f))]
 
             if verbose
             println("Found $(imax)x$(jmax) grid in WOPWOP output with"*
@@ -112,7 +112,7 @@ function read_wopwopoutput(outputname::String; read_path="", verbose=true,
                 for j in 1:jmax
                     for i in 1:imax
                         # NOTE: Shouldn't I be iterating over in the inner loop?
-                        field[i, j, t, fieldi] = parse(readline(f))
+                        field[i, j, t, fieldi] = Meta.parse(readline(f))
                     end
                 end
             end
@@ -236,7 +236,7 @@ function read_wopwoploading(filename; read_path="", verbose=false, v_lvl=0)
         end
 
         if verbose
-            println("\t"^(v_lvl+1)*"$(replace(names[end], " ", ""))"*
+            println("\t"^(v_lvl+1)*"$(replace(names[end], " " => ""))"*
                     "\t$(timeinfo[end])\t$(dims[end]) # Name, Time info, dims")
         end
     end
@@ -513,7 +513,7 @@ function geomwopwop2vtk(filename; read_path="", save_path=nothing,
                         # Subscripts of every node
                         subs = ( (ni, nj), (ni+1, nj), (ni+1, nj+1), (ni, nj+1) )
                         # Convert subscripts to linear index of every node
-                        this_cell = [sub2ind((imaxs[end], jmaxs[end]), sub...) for sub in subs]
+                        this_cell = [Base._sub2ind((imaxs[end], jmaxs[end]), sub...) for sub in subs]
                         push!(connectivity[end], this_cell)
                     end
                 end
@@ -643,7 +643,7 @@ function geomwopwop2vtk(filename; read_path="", save_path=nothing,
                     end
                 end
 
-                filename = preff*"_"*replace(names[zonei], " ", "")
+                filename = preff*"_"*replace(names[zonei], " " => "")
 
                 gt.generateVTK(filename, vtk_points; cells=vtk_cells[zonei],
                                 point_data=point_data, cell_data=cell_data,
@@ -686,7 +686,7 @@ function vtk2wopwop(in_filename, out_filename; read_path="", nums=nothing,
     # Read first file
     (points, cells, cell_types,
         data) = gt.read_vtk(Tflag==1 ? _in_filename :
-                                replace(_in_filename, ".vtk", ".$(nums[1]).vtk");
+                                replace(_in_filename, ".vtk" => ".$(nums[1]).vtk");
                                 path=read_path)
 
     nnodes = size(points, 2)
@@ -782,7 +782,7 @@ function vtk2wopwop(in_filename, out_filename; read_path="", nums=nothing,
         if ti != 1
             # NOTE: Here I assume that `nums` is given sequentally
             (points, cells, cell_types,
-             data) = gt.read_vtk(replace(_in_filename, ".vtk", ".$(nums[ti]).vtk");
+             data) = gt.read_vtk(replace(_in_filename, ".vtk" => ".$(nums[ti]).vtk");
                                     path=read_path)
 
             Ns[:] = 0
