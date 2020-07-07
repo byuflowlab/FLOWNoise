@@ -20,6 +20,9 @@ gt = GeometricTools
 import FFTW
 import WAV
 import PyPlot
+import Dates
+import LinearAlgebra: norm, dot, cross, I
+import Base: read
 
 const plt = PyPlot
 
@@ -30,6 +33,11 @@ module_path = splitdir(@__FILE__)[1]                # Path to this module
 # Load headers
 for module_name in ["observer", "wopwop", "wav", "postprocessing"]
     include("FLOWNoise_"*module_name*".jl")
+end
+
+
+function read(io, T, n)
+    return [read(io, T) for i in 1:n]
 end
 
 end # END OF MODULE

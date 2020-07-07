@@ -371,7 +371,7 @@ function geomwopwop2vtk(filename; read_path="", save_path=nothing,
 
     # Build output file name prefix
     if pref_save_fname=="automatic"
-        doti = find(x->x=='.', filename)
+        doti = findfirst(x->x=='.', filename)
         if length(doti)!=0
             # Get rid of extension
             preff = filename[1:doti[end]-1]
@@ -785,7 +785,7 @@ function vtk2wopwop(in_filename, out_filename; read_path="", nums=nothing,
              data) = gt.read_vtk(replace(_in_filename, ".vtk" => ".$(nums[ti]).vtk");
                                     path=read_path)
 
-            Ns[:] = 0
+            Ns[:] .= 0
         end
 
         # Calculate normals
@@ -864,4 +864,61 @@ function vtk2wopwop(in_filename, out_filename; read_path="", nums=nothing,
     close(f)
 
     return nothing
+end
+
+
+
+"""
+Read the solution field created by PSU-WOPWOP named `fieldname` (i.e., pressure,
+spl_spectrum, OASPLdB, or OASPLdBA) under `read_path`.
+"""
+function read_pswfield(fieldname::String, read_path; re20=false, tec=false)
+    header, field = read_wopwopoutput(fieldname; read_path=read_path, tec=tec)
+
+    if re20
+        header_hash = Dict( (occursin(",re20", h) ? h[1:findfirst(",re20", h)[1]-1] : h, i)
+                                                            for (i,h) in enumerate(header))
+    else
+        header_hash = Dict((h, i) for (i,h) in enumerate(header))
+    end
+
+    return field, header, header_hash
+end
+
+
+function read_pswfield(fieldnames::Array{String, 1}, read_path;
+                            re20crit=["OASPLdB", "OASPLdBA"], tec=false)
+
+    datas = Dict()
+
+    for fieldname in fieldnames
+        data = read_pswfield(fieldname, read_path; re20=fieldname in re20crit, tec=tec)
+
+        datas[fieldname] = Dict("field"=>data[1], "hd"=>data[2], "hs"=>data[3])
+    end
+
+    return datas
+end
+
+function fetch_pswfield(read_path::String, psw_datasets, args...;
+                        # fieldnames=["pressure", "spl_spectrum", "OASPLdB", "OASPLdBA"],
+                        fieldnames=["spl_spectrum", "OASPLdB", "OASPLdBA"],
+                                                    optargs...)
+
+    println("*"^72*"\n*\tReading dataset $read_path\n"*"*"^72)
+
+    psw_datasets[read_path] = read_pswfield(fieldnames, read_path, args...;
+                                                                    optargs...)
+
+    return psw_datasets[read_path]
+end
+
+function fetch_pswdataset(read_path, psw_datasets, args...; optargs...)
+
+    if !(read_path in keys(psw_datasets))
+        return fetch_pswfield(read_path, psw_datasets, args...; optargs...)
+    else
+        return psw_datasets[read_path]
+    end
+
 end
