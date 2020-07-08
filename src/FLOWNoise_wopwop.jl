@@ -900,10 +900,10 @@ function read_pswfield(fieldnames::Array{String, 1}, read_path;
     return datas
 end
 
-function fetch_pswfield(read_path::String, psw_datasets, args...;
+function fetch_pswfield(read_path::String, args...;
                         # fieldnames=["pressure", "spl_spectrum", "OASPLdB", "OASPLdBA"],
                         fieldnames=["spl_spectrum", "OASPLdB", "OASPLdBA"],
-                                                    optargs...)
+                        psw_datasets=Dict(), optargs...)
 
     println("*"^72*"\n*\tReading dataset $read_path\n"*"*"^72)
 
@@ -913,12 +913,16 @@ function fetch_pswfield(read_path::String, psw_datasets, args...;
     return psw_datasets[read_path]
 end
 
-function fetch_pswdataset(read_path, psw_datasets, args...; optargs...)
+function fetch_pswdataset(read_path, args...; psw_datasets=Dict(), optargs...)
 
     if !(read_path in keys(psw_datasets))
-        return fetch_pswfield(read_path, psw_datasets, args...; optargs...)
+        return fetch_pswfield(read_path, args...; psw_datasets=psw_datasets, optargs...)
     else
         return psw_datasets[read_path]
     end
 
 end
+
+# ------------------------- FUNCTIONS FOR BPM ----------------------------------
+read_bpmoutput(args...; optargs...) = read_wopwopoutput(args...; optargs...)
+fetch_bpmdataset(args...; optargs...) = fetch_pswdataset(args...; optargs...)
