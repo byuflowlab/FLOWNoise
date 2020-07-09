@@ -924,5 +924,7 @@ function fetch_pswdataset(read_path, args...; psw_datasets=Dict(), optargs...)
 end
 
 # ------------------------- FUNCTIONS FOR BPM ----------------------------------
-read_bpmoutput(args...; optargs...) = read_wopwopoutput(args...; optargs...)
-fetch_bpmdataset(args...; optargs...) = fetch_pswdataset(args...; optargs...)
+read_bpmoutput(args...; optargs...) = read_wopwopoutput(args...; tec=true, optargs...)
+fetch_bpmdataset(args...; optargs...) = fetch_pswdataset(args...; tec=true,
+                                                         fieldnames=["spl_spectrum", "splA_spectrum", "OASPLdB", "OASPLdBA"],
+                                                                            optargs...)

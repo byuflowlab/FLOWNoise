@@ -1,6 +1,6 @@
 #=##############################################################################
 # DESCRIPTION
-    Post-processing acoustic methods. 
+    Post-processing acoustic methods.
 
 # AUTHORSHIP
   * Author    : Eduardo J. Alvarez and Tyler Critchfield
@@ -13,7 +13,7 @@
 "Adds two sound pressure levels together."
 function addSPL(x, y)
 
-    #* For better understanding of what's going on, the following commented 
+    #* For better understanding of what's going on, the following commented
     #* steps are equivalent to the returned line
     # pref = 2e-5
 
@@ -25,17 +25,17 @@ function addSPL(x, y)
 
     # return oaspl_combined
 
-    return 10 * log10(10 .^ (x/10) + 10 .^ (y/10))
+    return 10 * log10.(10 .^ (x/10) .+ 10 .^ (y/10))
 end
 
 "Adds a vector of sound pressure levels."
 function addSPL(x::AbstractArray)
 
-    return 10 * log10(sum(10 .^ (x/10)))
+    return 10 * log10.(sum(10 .^ (x/10)))
 end
 
 
-"SPL spectrum to OASPL - works for A-weighted and non-A-weighted 
+"SPL spectrum to OASPL - works for A-weighted and non-A-weighted
     spectrums"
 function SPL2OASPL(spls)                # vector of sound pressure levels over the spectrum
 
@@ -49,8 +49,8 @@ function SPL2OASPL(spls)                # vector of sound pressure levels over t
 end
 
 
-"Takes a sound pressure level spectrum in the frequency domain and 
-    converts it to pressure in the time domain through an inverse 
+"Takes a sound pressure level spectrum in the frequency domain and
+    converts it to pressure in the time domain through an inverse
     fast fourier transform."
 function spl2pressure(spls)             # vector of sound pressure levels over the spectrum
 
@@ -64,7 +64,7 @@ function spl2pressure(spls)             # vector of sound pressure levels over t
 end
 
 
-"Takes in an unweighted SPL in decibels and frequency and returns 
+"Takes in an unweighted SPL in decibels and frequency and returns
     the A-weighted SPL in decibels"
 function aWeight(freq,                  # frequency
                 spl)                    # unweighted sound pressure level at each frequency
@@ -94,9 +94,9 @@ function aWeight(freq,                  # frequency
     return spla
 end
 
-"Takes pressure output from wopwop and converts it to sound pressure 
-    level spectrum or a scalar overall sound pressure level if 
-    oasplFlag == true (for both cases, it is A-weighted if  
+"Takes pressure output from wopwop and converts it to sound pressure
+    level spectrum or a scalar overall sound pressure level if
+    oasplFlag == true (for both cases, it is A-weighted if
     AweightingFlag == true).
 
 Note 2: Currently does not include any windowing or filtering methods.
@@ -107,7 +107,7 @@ function pressure2SPL(time,                     # time history
                         oasplFlag=false)        # returns scalar OASPL en lieu of SPL spectrum
 
     pref = 2e-5
-    
+
     deltat = time[2] - time[1]
     T = time[end]
     deltaf = 1/T
@@ -119,7 +119,7 @@ function pressure2SPL(time,                     # time history
 
     Y = FFTW.fft(p)
     Y = Y[1:M] # cutoff frequencies higher than Nyquist frequency
-    
+
     Pc = Y * 2 * deltat / T
     Pc[1] *= 0.5 # complex pressure
 
@@ -198,7 +198,7 @@ end
 # # ARGUMENTS
 # * `time::Array{Real, 1}`        : Vector of time segments associated with each pressure.
 # * `pressure::Array{Real, 1}`    : Pressure as a function of time.
-                                    
+
 # # OPTIONAL ARGUMENTS
 # * `windowtype::String`          : Data windowing options:
 #                                     "None", "Hann"
@@ -206,17 +206,17 @@ end
 #                                     "Normal", "A-weighted"
 
 # """
-# function pressure_time2frequency(time::Array{Float64, 1}, pressure::Array{Float64, 1}, 
+# function pressure_time2frequency(time::Array{Float64, 1}, pressure::Array{Float64, 1},
 #                                     windowtype::String, SPLtype::String)
-    
+
 #     #Define constants
 #     K1 = 2.243*10^16
 #     K3 = 1.562
 #     f1 = 20.599
 #     f2 = 107.653
 #     f3 = 737.862
-#     f4 = 12194.22 
-    
+#     f4 = 12194.22
+
 #     #Time & frequency parameters
 #     deltat = time[2] - time[1] #time spacing
 #     T = time[end] #total time
@@ -264,7 +264,7 @@ end
 #             wc[m] = K1 * f[m]^4 / ((f[m]^2 + f1^2)^2*(f[m]^2 + f4^2)^2)
 #             wa[m] = wc[m] * K3 * f[m]^4 / ((f[m]^2 + f2^2)*(f[m]^2 + f3^2))
 
-#         elseif SPLtype != "Normal" 
+#         elseif SPLtype != "Normal"
 #             error("Invalid SPLtype specified.")
 #         end
 
@@ -277,7 +277,7 @@ end
 
 #     p2 *= 0.5
 
-#     OASPL_dB = 10.0 * log(10,p2/(20*10.0^-6)^2) # overall sound pressure level in dB 
+#     OASPL_dB = 10.0 * log(10,p2/(20*10.0^-6)^2) # overall sound pressure level in dB
 
 #     return SPLlocal_dB, OASPL_dB
 # end
@@ -291,7 +291,7 @@ Windows data, or "tapers" the ends to zero. This effectively makes the data peri
 # ARGUMENTS
 * `time::Array{Real, 1}`        : Vector of time segments associated with each data point in data.
 * `data::Array{Real, 1}`        : Data (later to be transformed) as a function of time.
-                                    
+
 # OPTIONAL ARGUMENTS
 * `windowtype::String`          : Data windowing options:
                                     "Hann", "Flat Top", "Blackman"
