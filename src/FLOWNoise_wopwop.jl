@@ -679,9 +679,9 @@ function vtk2wopwop(in_filename, out_filename; read_path="", nums=nothing,
     _in_filename = in_filename*(in_filename[end-3:end]==".vtk" ? "" : ".vtk")
 
     # Time type: 1==Constant, 2==periodic, 3==aperiodic
-    nums==nothing ? Tflag = 1 :
+    nums==nothing   ? Tflag = 1 :
     period!=nothing ? Tflag = 2 :
-                        Tflag = 3
+                      Tflag = 3
 
     # Read first file
     (points, cells, cell_types,
