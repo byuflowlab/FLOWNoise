@@ -66,12 +66,26 @@ end
 
 "Takes in an unweighted SPL in decibels and frequency and returns
     the A-weighted SPL in decibels"
-function aWeight(freq,                  # frequency
-                spl)                    # unweighted sound pressure level at each frequency
+function aWeight(freq,                    # frequency
+                 spl)                     # unweighted sound pressure level at each frequency
 
     if size(freq, 1) != size(spl, 1) # ensure vectors have same dimensions
         spl = spl'
     end
+
+    wa = aWeight(freq)
+
+    pref = 2e-5 #? may not need?
+
+    p = pref^2 * 10.0 .^ (spl / 10) # convert to Pa
+    pa = wa .* p # a-weight
+
+    spla = 10 * log10.(pa / pref^2) # back to dB
+
+    return spla
+end
+
+function aWeight(freq)
 
     # unchanging constants defined in wopwop user manual
     K1 = 2.243e16 #s^-4
@@ -81,17 +95,8 @@ function aWeight(freq,                  # frequency
     f3 = 737.862 # Hz
     f4 = 12194.22 # Hz
 
-    pref = 2e-5 #? may not need?
-
-    wc = K1 * freq .^ 4 ./ ((freq .^ 2 + f1^2) .^ 2 .* (freq .^ 2 + f4^2) .^ 2) # C-weighting function
-    wa = wc .* K3 .* freq .^ 4 ./ ((freq .^ 2 + f2^2) .* (freq .^ 2 + f3^2)) # A-weighting function
-
-    p = pref^2 * 10.0 .^ (spl / 10) # convert to Pa
-    pa = wa .* p # a-weight
-
-    spla = 10 * log10.(pa / pref^2) # back to dB
-
-    return spla
+    wc = K1 * freq .^ 4 ./ ((freq .^ 2 .+ f1^2) .^ 2 .* (freq .^ 2 .+ f4^2) .^ 2) # C-weighting function
+    wa = wc .* K3 .* freq .^ 4 ./ ((freq .^ 2 .+ f2^2) .* (freq .^ 2 .+ f3^2)) # A-weighting function
 end
 
 "Takes pressure output from wopwop and converts it to sound pressure
