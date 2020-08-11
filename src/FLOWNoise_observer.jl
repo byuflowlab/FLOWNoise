@@ -51,7 +51,7 @@ function observer_sphere(R::Real, nR::Int, ntht::Int, nphi::Int;
                             phimin=0, phimax=360,
                             C::Array{T1, 1}=zeros(3),
                             rotation::Array{T2, 1}=zeros(3),
-                            save_path::Union{Nothing, String}=nothing,
+                            save_path::Union{Void, String}=nothing,
                             file_name::String="sphere",
                             fmt::String="vtk"
                          ) where {T1<:Real, T2<:Real}

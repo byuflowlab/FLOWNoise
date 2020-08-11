@@ -21,7 +21,7 @@ import FFTW
 import WAV
 import PyPlot
 import Dates
-import LinearAlgebra: norm, dot, cross, I
+# import LinearAlgebra: norm, dot, cross, I
 import Base: read
 
 const plt = PyPlot
