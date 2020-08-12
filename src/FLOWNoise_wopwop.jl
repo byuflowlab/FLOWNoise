@@ -58,7 +58,7 @@ function read_wopwopoutput(outputname::String; read_path="", verbose=true,
             end
 
             # Get rid of double spaces
-            while occursin("  ", ln)
+            while contains(ln, "  ")
                 ln = replace(ln, "  " => " ")
             end
 
@@ -876,7 +876,7 @@ function read_pswfield(fieldname::String, read_path; re20=false, tec=false)
     header, field = read_wopwopoutput(fieldname; read_path=read_path, tec=tec)
 
     if re20
-        header_hash = Dict( (occursin(",re20", h) ? h[1:findfirst(",re20", h)[1]-1] : h, i)
+        header_hash = Dict( (contains(h,",re20") ? h[1:findfirst(",re20", h)[1]-1] : h, i)
                                                             for (i,h) in enumerate(header))
     else
         header_hash = Dict((h, i) for (i,h) in enumerate(header))
