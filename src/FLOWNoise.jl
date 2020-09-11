@@ -23,6 +23,7 @@ import PyPlot
 import Dates
 import LinearAlgebra: norm, dot, cross, I
 import Base: read
+using Printf
 
 const plt = PyPlot
 
@@ -31,7 +32,7 @@ module_path = splitdir(@__FILE__)[1]                # Path to this module
 
 # ------------ HEADERS ---------------------------------------------------------
 # Load headers
-for module_name in ["observer", "wopwop", "wav", "postprocessing"]
+for module_name in ["observer", "wopwop", "wav", "postprocessing", "timedomain"]
     include("FLOWNoise_"*module_name*".jl")
 end
 
