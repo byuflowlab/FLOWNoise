@@ -14,7 +14,8 @@
 """
     Read MATLAB binary file
 """
-function loadbin(path, IDname, IDnum, CHnum; N=Inf, Nstart=0, readtype=Float32)
+function loadbin(path::String, IDname::String, IDnum::Int, CHnum::Int;
+                                            N=Inf, Nstart=0, readtype=Float32)
 
     # Open file
     filename = IDname*@sprintf("%03.0f", IDnum)*"_"*@sprintf("%03.0f", CHnum)*".bin"
