@@ -15,10 +15,15 @@
     Read MATLAB binary file
 """
 function loadbin(path::String, IDname::String, IDnum::Int, CHnum::Int;
-                                            N=Inf, Nstart=0, readtype=Float32)
+                                            N=Inf, Nstart=0, readtype=Float32,
+                                            id3=true)
 
     # Open file
-    filename = IDname*@sprintf("%03.0f", IDnum)*"_"*@sprintf("%03.0f", CHnum)*".bin"
+    if id3
+        filename = IDname*@sprintf("%03.0f", IDnum)*"_"*@sprintf("%03.0f", CHnum)*".bin"
+    else
+        filename = IDname*@sprintf("%04.0f", IDnum)*"_"*@sprintf("%03.0f", CHnum)*".bin"
+    end
     f = open(joinpath(path, filename), "r")
 
     # Determine file size
