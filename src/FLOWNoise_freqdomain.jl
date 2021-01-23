@@ -316,3 +316,69 @@ function spl_spectrum_from_fft(ps, fs; pref=20e-6)
 
     return freqs_singlesided, spls, OASPL_freq_singlesided
 end
+
+"""
+Convert the spectral density Gxx from narrow band to one-third octave band.
+"""
+function narrow2onethird_Gxx(freqs, Gxx)
+
+    df = freqs[2]-freqs[1]                                # (Hz) Bin width
+
+    fc = [1, 1.25, 1.6, 2.0, 2.5, 3.15, 4, 5, 6.3, 8]     # (Hz) band center frequencies
+    fc = vcat(fc, fc*10, fc*100, fc*1000, fc*10000, 1e5)
+
+    flow = [0.88, 1.13, 1.414, 1.76, 2.25, 2.825, 3.53, 4.4, 5.65, 7.07] # (Hz) lower bound of 1/3-oct bins
+    flow = vcat(flow, flow*10, flow*100, flow*1000, flow*10000, 0.88e5)
+
+    fhi = [1.13, 1.414, 1.76, 2.25, 2.825, 3.53, 4.4, 5.65, 7.07, 8.8] # (Hz) upper bound of 1/3-oct bins
+    fhi = vcat(fhi, fhi*10, fhi*100, fhi*1000, fhi*10000, 1.13e5)
+
+    freqs_oto = fc                                        # (Hz) One-third octave frequency bins
+    Gxx_oto = zeros(eltype(Gxx), length(freqs_oto))       # One-third octave autospectrum
+
+    for i in 1:length(freqs)
+
+        # Find oto bin
+        otoi = nothing
+
+        for j in 1:length(freqs_oto)
+            if flow[j] <= freqs[i] && fhi[j] >= freqs[i]
+                otoi = j
+                break
+            end
+        end
+
+        if otoi != nothing
+            Gxx_oto[otoi] += Gxx[i]*df
+        end
+    end
+
+    return freqs_oto, Gxx_oto
+end
+
+"""
+Convert spectral SPL from narrow band to one-third octave band.
+"""
+function narrow2onethird_spl(freqs, spls; pref=20e-6)
+
+    # Convert SPL to amplitude
+    ampl = pref * 10 .^ (spls ./ 20)
+
+    # Convert amplitude to pseudo-density
+    df = freqs[2]-freqs[1]
+    Gxx = ampl.^2 ./ df
+
+    # Convert narrow band to one-third octave band
+    freqs_oto, Gxx_oto = narrow2onethird_Gxx(freqs, Gxx)
+
+    # Convert pseudo-density to amplitude
+    # dfs = vcat(freqs_oto[2]-freqs_oto[1], [freqs_oto[i+1] - freqs_oto[i] for i in 1:length(freqs_oto)-1])
+    # ampl_oto = sqrt.(Gxx_oto .* dfs)
+    dfs = [freqs_oto[i+1] - freqs_oto[i] for i in 1:length(freqs_oto)-1]
+    ampl_oto = sqrt.(Gxx_oto[1:end-1] .* dfs)
+
+    # Convert amplitude to SPL
+    spls_oto = 20*log10.(ampl_oto./pref)
+
+    return freqs_oto[1:end-1], spls_oto
+end
