@@ -131,7 +131,8 @@ Read a PSU-WOPWOP functional file containing loading data (v1.0). Returns
 `(hdr, names, timeinfo, dims, time, data)` where data[k][:, i, j] is the value at
 the i-th node (or face) at the j-th time in the k-th zone
 """
-function read_wopwoploading(filename; read_path="", verbose=false, v_lvl=0)
+function read_wopwoploading(filename; read_path="",
+                                        verbose=false, verbose_lvl=0, v_lvl=0)
 
     # Open PSU-WOPWOP file
     f = open(joinpath(read_path, filename), "r")
@@ -382,15 +383,6 @@ function geomwopwop2vtk(filename; read_path="", save_path=nothing,
         preff = pref_save_fname
     end
 
-    # Open loading file
-    if loading_file != nothing
-        (load_hdr, load_names,
-        load_timeinfo, load_dims,
-        load_time,
-        load_data) = read_wopwoploading(loading_file; read_path=read_path,
-                                            verbose=verbose, v_lvl=v_lvl+1)
-    end
-
     # Open PSU-WOPWOP file
     f = open(joinpath(read_path, filename), "r")
 
@@ -414,6 +406,43 @@ function geomwopwop2vtk(filename; read_path="", save_path=nothing,
     push!(header, read(f, Int32, 1))                #10 1==single, 2==double
     push!(header, read(f, Int32, 1))                #11 iblank
     push!(header, read(f, Int32, 1))                #12 something
+
+    # Open loading file
+    if loading_file != nothing
+        if loading_file == "automatic"
+            # Construct loading file identifier
+            iden = filename[1:findfirst("compact.wop", filename)[1]-1]
+            iden *= "loading_"
+
+            # Find files that contain the identifier
+            loading_files = [fname for fname in readdir(read_path)
+                                                       if occursin(iden, fname)]
+            # Identify loading file
+            if length(loading_files)==0
+                @warn("No loading file was found for $(fname).")
+                lfile = nothing
+            elseif length(loading_files)>1
+                @warn("More than one loading file for $(fname) was found."*
+                        " The first one will be used: $(loading_files).")
+                lfile = loading_files[1]
+            else
+                lfile = loading_files[1]
+            end
+
+        else
+            lfile = loading_file
+        end
+
+        if lfile == nothing
+            loading_file = nothing
+        else
+            (load_hdr, load_names,
+            load_timeinfo, load_dims,
+            load_time,
+            load_data) = read_wopwoploading(lfile; read_path=read_path,
+                                            verbose=verbose, v_lvl=v_lvl+1)
+        end
+    end
 
     if verbose
         println("\t"^(v_lvl)*"$(header[1])\t # Magic number")
@@ -666,6 +695,38 @@ function geomwopwop2vtk(filename; read_path="", save_path=nothing,
     end
 
     return names, points, vtk_cells, periods, times, str
+end
+
+
+function save_geomwopwop2vtk(read_path::String, save_path::String; prompt=true,
+                                         verbose=true, verbose_level=0, v_lvl=0)
+    # Create save path
+    gt.create_path(save_path, prompt)
+
+    # Identify loft and compact PSW files
+    wopfiles = [fname for fname in readdir(read_path)
+                if occursin("loft.wop", fname) || occursin("compact.wop", fname)]
+
+    vtk_str = "$save_path/"
+
+    for fname in wopfiles
+
+        println("\t"^(v_lvl)*"*"^73)
+        println("\t"^(v_lvl)*"*\t\tREADING $fname")
+        println("\t"^(v_lvl)*"*"^73)
+
+        # Loading file if compact patch
+        lfname = occursin("compact.wop", fname) ? "automatic" : nothing
+
+        # Convert from PSW to VTK
+        vtk_str *= geomwopwop2vtk(fname; read_path=read_path,
+                                        loading_file=lfname,
+                                        verbose=verbose && verbose_level>0,
+                                        v_lvl=v_lvl+1,
+                                        save_path=save_path)[end]
+    end
+
+    return vtk_str
 end
 
 """
