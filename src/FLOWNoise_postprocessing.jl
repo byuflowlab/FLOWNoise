@@ -40,8 +40,8 @@ end
 function SPL2OASPL(spls)                # vector of sound pressure levels over the spectrum
 
     # don't need a reference pressure when converting back and forth
-    ps = 10 .^ (spls / 10)
-    ps_sum = sum(ps)
+    ps = 10 .^ (spls / 20)
+    ps_sum = sum(ps.^2)
 
     oaspl = 10 * log10(ps_sum)
 
