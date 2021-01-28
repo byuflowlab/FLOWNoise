@@ -227,10 +227,10 @@ function plot_spectrum_spl(dataset_infos, microphones, BPF, sph_ntht, pangle::Fu
 
         plt.figure("$(fieldname_bpm)-$(mici)", figsize=[7, 3.5])
 
-        for (csv_filename, lbl, stl, weight) in plot_csv
-            data = CSV.read(csv_filename, DataFrames.DataFrame)
+        for (csv_filename, lbl, stl, weight, optargs) in plot_csv
+            data = CSV.read(csv_filename, DataFrames.DataFrame, datarow=1)
             spl_exp = weight ? aWeight.(data[!, 1], data[!, 2]) : data[!, 2]
-            plt.plot(data[!, 1]*xscaling, spl_exp, stl, label=lbl)
+            plt.plot(data[!, 1]*xscaling, spl_exp, stl; label=lbl, optargs...)
         end
 
         # Plot datasets
@@ -296,4 +296,70 @@ function plot_spectrum_spl(dataset_infos, microphones, BPF, sph_ntht, pangle::Fu
     end
 end
 
-# function plot_directivity_splbpf()
+function plot_directivity_splbpf(dataset_infos, BPFi, BPF, pangle::Function;
+                                    datasets_psw=def_datasets_psw,
+                                    datasets_bpm=def_datasets_bpm,
+                                    plot_csv=[],
+                                    thetalims=180*[1, -1],
+                                    thetagrids=collect(-180:45/2:180)[[3, 5, 7, 8, 9, 10, 11, 13, 15, 17]],
+                                    rlbl_pos=90,
+                                    rticks=40:4:52, rlims=[40, 54], rorigin=36,
+                                    Pref=L" re $20\mu$Pa")
+
+    # BPFi         = 1                     # BPF multiple to plot
+    fieldname_psw = "spl_spectrum"         # Field to plot
+    fieldname_bpm = "spl_spectrum"         # Field to plot
+
+    plt.figure("$(fieldname_bpm)-$(BPFi)", figsize=[3, 3]*2)
+
+    for (csv_filename, lbl, stl, weight, optargs) in plot_csv
+        data = CSV.read(csv_filename, DataFrames.DataFrame, datarow=1)
+        plt.polar(pi/180*data[!, 2], data[!, 1], stl; label=lbl, optargs...)
+    end
+
+    # Grab angles
+
+    # Plot datasets
+    for (lbl, read_path_psw, read_path_bpm, stl, clr) in dataset_infos
+
+        # Fetch tonal noise
+        data_psw = datasets_psw[read_path_psw][fieldname_psw]
+        yi = data_psw["hs"]["Total_dB"]
+        fi = data_psw["hs"]["Frequency"]
+
+        df = data_psw["field"][1, 1, 2, fi] - data_psw["field"][1, 1, 1, fi] # Frequency step
+        freqi = ceil(Int, BPFi*BPF/df + 1)                           # Frequency index
+        freq = data_psw["field"][1, 1, freqi, fi]                    # Frequency
+        # _lbl = " @ $(Int(round(freq, digits=0))) Hz"                 # Frequency string
+        _lbl = ""
+
+        spl_psw = data_psw["field"][:, 1, freqi, yi]
+
+        # Fetch broadband noise
+        data_bpm = datasets_bpm[read_path_bpm][fieldname_bpm]
+        freqs_bpm = datasets_bpm[read_path_bpm]["frequencies"]["field"][:, 1]
+        spl_bpm = [math.akima(freqs_bpm, data_bpm["field"][:, mici], freq) for mici in 1:length(spl_psw)]
+
+        # Add tonal and broadband SPL together
+        spl = addSPL(spl_psw, spl_bpm)
+
+        angles = pangle.(1:length(spl))
+        plt.polar(pi/180*angles, spl, stl, label=lbl*_lbl, alpha=0.8, color=clr)
+    end
+
+    ax = plt.gca()
+    ax.set_theta_zero_location("W")
+    ax.set_theta_direction(-1)
+    ax.set_thetalim(pi/180*thetalims)
+    ax.set_rlabel_position(rlbl_pos)
+    ax.set_rticks(rticks)
+    ax.set_rlim(rlims)
+    ax.set_rorigin(rorigin)
+    ax.set_thetagrids(thetagrids)
+    ax.grid(true)
+    plt.xlabel("SPL (dB"*Pref*")\n @ $(BPFi)"*(BPFi==1 ? L"$^\mathrm{st}$" :
+                           BPFi==2 ? L"$^\mathrm{nd}$" :
+                           BPFi==3 ? L"$^\mathrm{rd}$" : L"$^\mathrm{th}$")*" BPF ($(ceil(Int, BPFi*BPF)) hz)")
+    plt.legend(loc="center left", bbox_to_anchor=(1.1, 0.5))
+    plt.tight_layout();
+end
