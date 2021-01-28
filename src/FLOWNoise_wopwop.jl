@@ -31,10 +31,15 @@ k-th field.
 # OPTIONAL ARGUMENTS
 * `read_path::String`           : Path from where to read the inputs files.
 """
-function read_wopwopoutput(outputname::String; read_path="", verbose=true,
+function read_wopwopoutput(outputname::String; read_path="",
+                            verbose=true, verbose_level=1,
                             v_lvl=0, tec=false)
 
     if tec
+        if verbose && verbose_level>=0
+            println("\t"^v_lvl*"Reading output file $(outputname*".tec") ...")
+        end
+
         f = open(joinpath(read_path, outputname*".tec"), "r")
 
         readline(f) # Title
@@ -70,8 +75,8 @@ function read_wopwopoutput(outputname::String; read_path="", verbose=true,
 
         close(f)
     else
-        if verbose
-            println("\t"^v_lvl*"Reading output file...")
+        if verbose && verbose_level>=0
+            println("\t"^v_lvl*"Reading output file $(outputname*".nam") ...")
         end
 
         # Read header file
@@ -90,8 +95,8 @@ function read_wopwopoutput(outputname::String; read_path="", verbose=true,
         f = open(joinpath(read_path, outputname*".fn"), "r")
         imax, jmax, tmax, fieldmax = [Meta.parse(elem) for elem in split(readline(f))]
 
-            if verbose
-            println("Found $(imax)x$(jmax) grid in WOPWOP output with"*
+        if verbose && verbose_level>=0
+            println("\t"^(v_lvl+1)*"Found $(imax)x$(jmax) grid in WOPWOP output with"*
                         " $tmax time steps.")
         end
 
@@ -99,13 +104,13 @@ function read_wopwopoutput(outputname::String; read_path="", verbose=true,
         field = zeros(imax, jmax, tmax, fieldmax)
         for fieldi in 1:fieldmax # Iterate over fields
 
-            if verbose
+            if verbose && verbose_level>=1
                 println("\t"^(v_lvl+1)*"Reading field $(header[fieldi])...")
             end
 
             for t in 1:tmax # Iterate over time steps
 
-                if verbose && (t-1)%ceil(Int, tmax/4)==0
+                if verbose && (t-1)%ceil(Int, tmax/4)==0 && verbose_level>=1
                     println("\t"^(v_lvl+2)*"Reading time t=$t out of $tmax")
                 end
 
@@ -933,8 +938,10 @@ end
 Read the solution field created by PSU-WOPWOP named `fieldname` (i.e., pressure,
 spl_spectrum, OASPLdB, or OASPLdBA) under `read_path`.
 """
-function read_pswfield(fieldname::String, read_path; re20=false, tec=false)
-    header, field = read_wopwopoutput(fieldname; read_path=read_path, tec=tec)
+function read_pswfield(fieldname::String, read_path; re20=false, tec=false,
+                                                                     optargs...)
+    header, field = read_wopwopoutput(fieldname; read_path=read_path, tec=tec,
+                                                                    optargs...)
 
     if re20
         header_hash = Dict( (occursin(",re20", h) ? h[1:findfirst(",re20", h)[1]-1] : h, i)
@@ -948,12 +955,14 @@ end
 
 
 function read_pswfield(fieldnames::Array{String, 1}, read_path;
-                            re20crit=["OASPLdB", "OASPLdBA"], tec=false)
+                            re20crit=["OASPLdB", "OASPLdBA"], tec=false,
+                            optargs...)
 
     datas = Dict()
 
     for fieldname in fieldnames
-        data = read_pswfield(fieldname, read_path; re20=fieldname in re20crit, tec=tec)
+        data = read_pswfield(fieldname, read_path; re20=fieldname in re20crit,
+                                                       tec=tec, optargs...)
 
         datas[fieldname] = Dict("field"=>data[1], "hd"=>data[2], "hs"=>data[3])
     end
@@ -964,12 +973,17 @@ end
 function fetch_pswfield(read_path::String, args...;
                         # fieldnames=["pressure", "spl_spectrum", "OASPLdB", "OASPLdBA"],
                         fieldnames=["spl_spectrum", "OASPLdB", "OASPLdBA"],
-                        psw_datasets=Dict(), optargs...)
+                        psw_datasets=Dict(), verbose=true, v_lvl=0,
+                        verbose_level=1, optargs...)
 
-    println("*"^72*"\n*\tReading dataset $read_path\n"*"*"^72)
+    if verbose; println("\t"^v_lvl*
+                        "*"^72*"\n*\tReading dataset $read_path\n"*"*"^72); end;
 
     psw_datasets[read_path] = read_pswfield(fieldnames, read_path, args...;
-                                                                    optargs...)
+                                            verbose=verbose,
+                                            verbose_level=verbose_level-1,
+                                            v_lvl=v_lvl+1,
+                                            optargs...)
 
     return psw_datasets[read_path]
 end
