@@ -973,33 +973,45 @@ end
 function fetch_pswfield(read_path::String, args...;
                         # fieldnames=["pressure", "spl_spectrum", "OASPLdB", "OASPLdBA"],
                         fieldnames=["spl_spectrum", "OASPLdB", "OASPLdBA"],
-                        psw_datasets=Dict(), verbose=true, v_lvl=0,
+                        datasets=def_datasets_psw, verbose=true, v_lvl=0,
                         verbose_level=1, optargs...)
 
     if verbose; println("\t"^v_lvl*
                         "*"^72*"\n*\tReading dataset $read_path\n"*"*"^72); end;
 
-    psw_datasets[read_path] = read_pswfield(fieldnames, read_path, args...;
+    datasets[read_path] = read_pswfield(fieldnames, read_path, args...;
                                             verbose=verbose,
                                             verbose_level=verbose_level-1,
                                             v_lvl=v_lvl+1,
                                             optargs...)
 
-    return psw_datasets[read_path]
+    return datasets[read_path]
 end
 
-function fetch_pswdataset(read_path, args...; psw_datasets=Dict(), optargs...)
+function fetch_pswdataset(read_path, args...; datasets=def_datasets_psw,
+                                                verbose=true, v_lvl=0,
+                                                force_read=false,
+                                                optargs...)
 
-    if !(read_path in keys(psw_datasets))
-        return fetch_pswfield(read_path, args...; psw_datasets=psw_datasets, optargs...)
+    if !(read_path in keys(datasets)) || force_read
+        return fetch_pswfield(read_path, args...; verbose=verbose, v_lvl=v_lvl,
+                                                  datasets=datasets, optargs...)
     else
-        return psw_datasets[read_path]
+        if verbose; println("\t"^v_lvl*
+                            "Dataset $(read_path) has already been loaded."*
+                            " It will not be read again."); end;
+        return datasets[read_path]
     end
 
 end
 
 # ------------------------- FUNCTIONS FOR BPM ----------------------------------
-read_bpmoutput(args...; optargs...) = read_wopwopoutput(args...; tec=true, optargs...)
-fetch_bpmdataset(args...; optargs...) = fetch_pswdataset(args...; tec=true,
-                                                         fieldnames=["spl_spectrum", "splA_spectrum", "OASPLdB", "OASPLdBA"],
-                                                                            optargs...)
+function read_bpmoutput(args...; datasets=def_datasets_bpm, optargs...)
+    return read_wopwopoutput(args...; tec=true, datasets=datasets, optargs...)
+end
+function fetch_bpmdataset(args...; datasets=def_datasets_bpm, optargs...)
+    return fetch_pswdataset(args...; tec=true, datasets=datasets,
+                                     fieldnames=["spl_spectrum", "splA_spectrum",
+                                                          "OASPLdB", "OASPLdBA"],
+                                                                    optargs...)
+end
