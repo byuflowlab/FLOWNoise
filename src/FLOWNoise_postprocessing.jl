@@ -170,6 +170,7 @@ end
     `plot_spectrum_spl(dataset_infos, microphones, BPF, sph_ntht, pangle::Function;
                                 datasets_psw=def_datasets_psw,
                                 datasets_bpm=def_datasets_bpm,
+                                onethirdoctave=false,
                                 Aweighted=false,
                                 plot_csv=nothing, csv_lbl="Experimental", csv_stl="k", csv_weight=true,
                                 xBPF=true, BPF_lines=0,
@@ -193,22 +194,55 @@ Plot the SPL spectrum in `dataset_infos` at the given microphones.
 # OPTIONAL ARGUMENTS
 * `datasets_psw`      : PSU-WOPWOP datasets where to read data from.
 * `datasets_bpm`      : BPM datasets where to read data from.
+* `onethirdoctave`    : Converts the plot to 1/3 octave bands, otherwise it'll
+                            convert BPM's 1/3 bands to narrow bands of PSW.
 * `Aweighted`         : Plot A-weighted SPL.
 * `plot_csv`          : Give it the path to a CSV file to include in the plot.
 * `xBPF`              : Scale frequencies by BPF if true.
 * `BPF_lines`         : Number of lines of BPF multiples to draw in the plot.
 
 # EXAMPLE
-#
+```julia
+# Dataset to read and associated information
+dataset_infos = [   # (label, PSW solution, BPM solution, BPM freq bins, line style, color)
+                    ("FLOWUnsteady w/BEMT",
+                        "temps/example_dji9443_00_psw00/runcase/",
+                        "temps/example_dji9443_00_bpm00",
+                        "-", "r")
+                ]
+
+datasets_psw = Dict()     # Stores PSW data in this dictionary
+datasets_bpm = Dict()     # Stores BPM data in this dictionary
+
+# Read datasets and stores them in dictionaries
+FLOWNoise.read_data(dataset_infos; datasets_psw=datasets_psw, datasets_bpm=datasets_bpm)
+
+microphones  = [-45]                 # (deg) microphone to plot
+Aweighted    = false                 # Plot A-weighted SPL
+
+# Experimental data from Zawodny et al., Fig. 9
+filename = joinpath("data", "zawodnydigitization2", "zawodny_dji9443_spl_5400_01.csv")
+plot_experimental = [(filename, "Experimental", "k", Aweighted, [])]
+
+# Plot spectrum in Hz with blade-passing-frequency lines
+FLOWNoise.plot_spectrum_spl(dataset_infos, microphones, BPF, sph_ntht, pangle;
+                              datasets_psw=datasets_psw, datasets_bpm=datasets_bpm,
+                              Aweighted=Aweighted,
+                              plot_csv=plot_experimental,
+                              xBPF=false, xlims=[100, 3e4], BPF_lines=21)
+```
+
 """
 function plot_spectrum_spl(dataset_infos, microphones, BPF, sph_ntht, pangle::Function;
                             datasets_psw=def_datasets_psw,
                             datasets_bpm=def_datasets_bpm,
+                            onethirdoctave=false,
                             Aweighted=false,
                             plot_csv=[],
                             xBPF=true, BPF_lines=0,
                             xlims=[6*10.0^(-1.0), 1.75e2], ylims=[0, 60],
-                            Pref=L" re $20\mu$Pa"
+                            Pref=L" re $20\mu$Pa",
+                            verbose=true
                             )
 
     # microphone   = -45                   # (deg) microphone to plot
@@ -221,7 +255,8 @@ function plot_spectrum_spl(dataset_infos, microphones, BPF, sph_ntht, pangle::Fu
     micis         = Int.((-microphones .+ 180) * sph_ntht/360 .+ 1)    # Index of each microphone
     xscaling = (1/BPF)^xBPF
 
-    ylbl = Aweighted ? "A-weighted SPL\n(dBA"*Pref*")" : "SPL (dB"*Pref*")"
+    aux = "SPL"*(onethirdoctave ? L"_{1/3}" : "")
+    ylbl = Aweighted ? "A-weighted "*aux*"\n(dBA"*Pref*")" : aux*" (dB"*Pref*")"
 
     for mici in micis
 
@@ -247,6 +282,16 @@ function plot_spectrum_spl(dataset_infos, microphones, BPF, sph_ntht, pangle::Fu
             data_bpm = datasets_bpm[read_path_bpm][fieldname_bpm]
             freqs_bpm = datasets_bpm[read_path_bpm]["frequencies"]["field"][:, 1]
             org_spl_bpm = data_bpm["field"][:, mici]
+
+            # Convert narrow -> 1/3 or 1/3 -> narrow band to make tonal and
+            # broadband comparable
+            if onethirdoctave
+                freqs_psw, spl_psw = narrow2onethird_spl(freqs_psw, spl_psw)
+            else
+                df = (freqs_psw[2]-freqs_psw[1])
+                println("Converting to narrow band of bin width $(round(df, digits=1)) Hz")
+                freqs_bpm, org_spl_bpm = onethird2narrow_spl(freqs_bpm, df, org_spl_bpm)
+            end
 
             # Define the range of frequency as the union of both components
             freqs = freqs_psw                       # Grab PSW frequency range
@@ -296,6 +341,68 @@ function plot_spectrum_spl(dataset_infos, microphones, BPF, sph_ntht, pangle::Fu
     end
 end
 
+"""
+    `plot_directivity_splbpf(dataset_infos, BPFi, BPF, pangle::Function;
+                                        datasets_psw=def_datasets_psw,
+                                        datasets_bpm=def_datasets_bpm,
+                                        plot_csv=[],
+                                        thetalims=180*[1, -1],
+                                        thetagrids=collect(-180:45/2:180)[[3, 5, 7, 8, 9, 10, 11, 13, 15, 17]],
+                                        rlbl_pos=90,
+                                        rticks=40:4:52, rlims=[40, 54], rorigin=36,
+                                        Pref=L" re \$20\\mu\$Pa")`
+
+Plot the directivity of the requested multiple `BPFi` of the blade-passing
+frequency `BPF`.
+
+# ARGUMENTS
+* `dataset_infos`     : Array of tuples containing datasets to plot (see
+                            example).
+* `pangle::Function`  : Function to convert from indices of grid nodes to
+                            degrees (or any other metric represented by the
+                            azimuthal dimension of the grid) as `pangle(i)`.
+
+# OPTIONAL ARGUMENTS
+* `datasets_psw`      : PSU-WOPWOP datasets where to read data from.
+* `datasets_bpm`      : BPM datasets where to read data from.
+* `plot_csv`          : Give it the path to a CSV file to include in the plot.
+
+# EXAMPLE
+```julia
+
+# Dataset to read and associated information
+dataset_infos = [   # (label, PSW solution, BPM solution, BPM freq bins, line style, color)
+                    ("FLOWUnsteady w/BEMT",
+                        "temps/example_dji9443_00_psw00/runcase/",
+                        "temps/example_dji9443_00_bpm00",
+                        "-", "r")
+                ]
+
+datasets_psw = Dict()     # Stores PSW data in this dictionary
+datasets_bpm = Dict()     # Stores BPM data in this dictionary
+
+# Read datasets and stores them in dictionaries
+FLOWNoise.read_data(dataset_infos; datasets_psw=datasets_psw, datasets_bpm=datasets_bpm)
+
+BPFi = 1                 # Multiple of blade-passing frequency to plot
+
+# Experimental and computational data reported by Zawodny et al., Fig. 14
+filename1 = joinpath("data", "zawodnydigitization2", "zawodny_fig14_topright_exp00.csv")
+filename2 = joinpath("data", "zawodnydigitization2", "zawodny_fig14_topright_of00.csv")
+filename3 = joinpath("data", "zawodnydigitization2", "zawodny_fig14_topright_pas00.csv")
+
+plot_experimental = [(filename1, "Experimental", "ok", Aweighted, []),
+                     (filename2, "OVERFLOW2", "-c", Aweighted, [(:alpha, 0.8)]),
+                     (filename3, "BEM+ANOPP", ":b", Aweighted, [(:alpha, 0.8)])]
+
+# Plot SPL directivity of first blade-passing frequency
+FLOWNoise.plot_directivity_splbpf(dataset_infos, BPFi, BPF, pangle;
+                                    datasets_psw=datasets_psw,
+                                    datasets_bpm=datasets_bpm,
+                                    plot_csv=plot_experimental,
+                                    rticks=40:4:52, rlims=[40, 54], rorigin=36)
+```
+"""
 function plot_directivity_splbpf(dataset_infos, BPFi, BPF, pangle::Function;
                                     datasets_psw=def_datasets_psw,
                                     datasets_bpm=def_datasets_bpm,
@@ -316,8 +423,6 @@ function plot_directivity_splbpf(dataset_infos, BPFi, BPF, pangle::Function;
         data = CSV.read(csv_filename, DataFrames.DataFrame, datarow=1)
         plt.polar(pi/180*data[!, 2], data[!, 1], stl; label=lbl, optargs...)
     end
-
-    # Grab angles
 
     # Plot datasets
     for (lbl, read_path_psw, read_path_bpm, stl, clr) in dataset_infos
@@ -341,7 +446,9 @@ function plot_directivity_splbpf(dataset_infos, BPFi, BPF, pangle::Function;
         spl_bpm = [math.akima(freqs_bpm, data_bpm["field"][:, mici], freq) for mici in 1:length(spl_psw)]
 
         # Add tonal and broadband SPL together
-        spl = addSPL(spl_psw, spl_bpm)
+        # spl = addSPL(spl_psw, spl_bpm)
+        # NOTE: Here we ignore the broadband component since it is in a 1/3 octave band
+        spl = spl_psw
 
         angles = pangle.(1:length(spl))
         plt.polar(pi/180*angles, spl, stl, label=lbl*_lbl, alpha=0.8, color=clr)
@@ -360,6 +467,121 @@ function plot_directivity_splbpf(dataset_infos, BPFi, BPF, pangle::Function;
     plt.xlabel("SPL (dB"*Pref*")\n @ $(BPFi)"*(BPFi==1 ? L"$^\mathrm{st}$" :
                            BPFi==2 ? L"$^\mathrm{nd}$" :
                            BPFi==3 ? L"$^\mathrm{rd}$" : L"$^\mathrm{th}$")*" BPF ($(ceil(Int, BPFi*BPF)) hz)")
+    plt.legend(loc="center left", bbox_to_anchor=(1.1, 0.5))
+    plt.tight_layout();
+end
+
+"""
+    `plot_directivity_oaspl(dataset_infos, pangle::Function;
+                                        datasets_psw=def_datasets_psw,
+                                        datasets_bpm=def_datasets_bpm,
+                                        Aweighted=false,
+                                        plot_csv=[],
+                                        thetalims=180*[1, -1],
+                                        thetagrids=collect(-180:45/2:180)[[3, 5, 7, 8, 9, 10, 11, 13, 15, 17]],
+                                        rlbl_pos=90,
+                                        rticks=40:10:70, rlims=[40, 72], rorigin=30,
+                                        Pref=L" re \$20\\mu\$Pa")`
+
+Plot overall SPL directivity.
+
+# ARGUMENTS
+* `dataset_infos`     : Array of tuples containing datasets to plot (see
+                            example).
+* `pangle::Function`  : Function to convert from indices of grid nodes to
+                            degrees (or any other metric represented by the
+                            azimuthal dimension of the grid) as `pangle(i)`.
+
+# OPTIONAL ARGUMENTS
+* `datasets_psw`      : PSU-WOPWOP datasets where to read data from.
+* `datasets_bpm`      : BPM datasets where to read data from.
+* `Aweighted`         : Plot A-weighted SPL.
+* `plot_csv`          : Give it the path to a CSV file to include in the plot.
+
+# EXAMPLE
+```julia
+
+# Dataset to read and associated information
+dataset_infos = [   # (label, PSW solution, BPM solution, BPM freq bins, line style, color)
+                    ("FLOWUnsteady w/BEMT",
+                        "temps/example_dji9443_00_psw00/runcase/",
+                        "temps/example_dji9443_00_bpm00",
+                        "-", "r")
+                ]
+
+datasets_psw = Dict()     # Stores PSW data in this dictionary
+datasets_bpm = Dict()     # Stores BPM data in this dictionary
+
+# Read datasets and stores them in dictionaries
+FLOWNoise.read_data(dataset_infos; datasets_psw=datasets_psw, datasets_bpm=datasets_bpm)
+
+Aweighted = false
+
+# Experimental and computational data reported by Zawodny et al., Fig. 12
+filename1 = joinpath("data", "zawodnydigitization2", "zawodny_fig12_left_5400_00.csv")
+
+plot_experimental = [(filename1, "Experimental", "ok", Aweighted, [])]
+
+# Plot OASPL directivity
+FLOWNoise.plot_directivity_oaspl(dataset_infos, pangle;
+                                    datasets_psw=datasets_psw,
+                                    datasets_bpm=datasets_bpm,
+                                    Aweighted=Aweighted,
+                                    plot_csv=plot_experimental,
+                                    rticks=40:10:70, rlims=[40, 72], rorigin=30)
+```
+"""
+function plot_directivity_oaspl(dataset_infos, pangle::Function;
+                                    datasets_psw=def_datasets_psw,
+                                    datasets_bpm=def_datasets_bpm,
+                                    Aweighted=false,
+                                    plot_csv=[],
+                                    thetalims=180*[1, -1],
+                                    thetagrids=collect(-180:45/2:180)[[3, 5, 7, 8, 9, 10, 11, 13, 15, 17]],
+                                    rlbl_pos=90,
+                                    rticks=40:10:70, rlims=[40, 72], rorigin=30,
+                                    Pref=L" re $20\mu$Pa")
+
+    fieldname_psw = "OASPLdB"*"A"^Aweighted # Field to plot
+    fieldname_bpm = fieldname_psw           # Field to plot
+
+    plt.figure("$(fieldname_bpm)", figsize=[3, 3]*2)
+
+    for (csv_filename, lbl, stl, weight, optargs) in plot_csv
+        data = CSV.read(csv_filename, DataFrames.DataFrame, datarow=1)
+        plt.polar(pi/180*data[!, 2], data[!, 1], stl; label=lbl, optargs...)
+    end
+
+    # Plot datasets
+    for (lbl, read_path_psw, read_path_bpm, stl, clr) in dataset_infos
+
+        # Fetch tonal noise
+        data_psw = datasets_psw[read_path_psw][fieldname_psw]
+        yi = data_psw["hs"]["TotalOASPLdB"*"A"^Aweighted]
+        oaspl_psw = data_psw["field"][:, 1, 1, yi]
+
+        # Fetch broadband noise
+        data_bpm = datasets_bpm[read_path_bpm][fieldname_bpm]
+        oaspl_bpm = data_bpm["field"][:]
+
+        # Add tonal and broadband OASPL together
+        oaspl = addSPL(oaspl_psw, oaspl_bpm)
+
+        angles = pangle.(1:length(oaspl))
+        plt.polar(pi/180*angles, oaspl, stl, label=lbl, alpha=0.8, color=clr)
+    end
+
+    ax = plt.gca()
+    ax.set_theta_zero_location("W")
+    ax.set_theta_direction(-1)
+    ax.set_thetalim(pi/180*thetalims)
+    ax.set_rlabel_position(rlbl_pos)
+    ax.set_rticks(rticks)
+    ax.set_rlim(rlims)
+    ax.set_rorigin(rorigin)
+    ax.set_thetagrids(thetagrids)
+    ax.grid(true)
+    plt.xlabel("A-weighted "^Aweighted*"OASPL\n"*"(dB"*"A"^Aweighted*"$(Pref))")
     plt.legend(loc="center left", bbox_to_anchor=(1.1, 0.5))
     plt.tight_layout();
 end
