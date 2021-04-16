@@ -317,143 +317,300 @@ function spl_spectrum_from_fft(ps, fs; pref=20e-6)
     return freqs_singlesided, spls, OASPL_freq_singlesided
 end
 
+# """
+# Convert the spectral density Gxx from narrow band to one-third octave band.
+# """
+# function narrow2onethird_Gxx(freqs, Gxx)
+#
+#     df = freqs[2]-freqs[1]                                # (Hz) Bin width
+#
+#     fc = [1, 1.25, 1.6, 2.0, 2.5, 3.15, 4, 5, 6.3, 8]     # (Hz) band center frequencies
+#     fc = vcat(fc, fc*10, fc*100, fc*1000, fc*10000, 1e5)
+#
+#     flow = [0.88, 1.13, 1.414, 1.76, 2.25, 2.825, 3.53, 4.4, 5.65, 7.07] # (Hz) lower bound of 1/3-oct bins
+#     flow = vcat(flow, flow*10, flow*100, flow*1000, flow*10000, 0.88e5)
+#
+#     fhi = [1.13, 1.414, 1.76, 2.25, 2.825, 3.53, 4.4, 5.65, 7.07, 8.8] # (Hz) upper bound of 1/3-oct bins
+#     fhi = vcat(fhi, fhi*10, fhi*100, fhi*1000, fhi*10000, 1.13e5)
+#
+#     freqs_oto = fc                                        # (Hz) One-third octave frequency bins
+#     Gxx_oto = zeros(eltype(Gxx), length(freqs_oto))       # One-third octave autospectrum
+#
+#     for i in 1:length(freqs)
+#
+#         # Find oto bin
+#         otoi = nothing
+#
+#         for j in 1:length(freqs_oto)
+#             if flow[j] <= freqs[i] &&  freqs[i] < fhi[j]
+#                 otoi = j
+#                 break
+#             end
+#         end
+#
+#         if otoi != nothing
+#             Gxx_oto[otoi] += Gxx[i]*df
+#         end
+#     end
+#
+#     return freqs_oto, Gxx_oto
+# end
+
+# """
+# # Convert spectral SPL from narrow band to one-third octave band.
+# # """
+# function narrow2onethird_spl_DEPRE(freqs, spls; pref=20e-6)
+#
+#     # Convert SPL to amplitude
+#     ampl = pref * 10 .^ (spls ./ 20)
+#
+#     # Convert amplitude to pseudo-density
+#     df = freqs[2]-freqs[1]
+#     Gxx = ampl.^2 ./ df
+#
+#     # Convert narrow band to one-third octave band
+#     freqs_oto, Gxx_oto = narrow2onethird_Gxx(freqs, Gxx)
+#
+#     # 1/3 octave band bounds
+#     fc = freqs_oto
+#     flow = vcat(fc[2:end]/sqrt(2), fc[end-2]*sqrt(2))
+#     fhi = vcat(fc[3]/sqrt(2), fc[1:end-1]*sqrt(2))
+#
+#     # Convert pseudo-density to amplitude
+#     # dfs = vcat(freqs_oto[2]-freqs_oto[1], [freqs_oto[i+1] - freqs_oto[i] for i in 1:length(freqs_oto)-1])
+#     # ampl_oto = sqrt.(Gxx_oto .* dfs)
+#     # dfs = [freqs_oto[i+1] - freqs_oto[i] for i in 1:length(freqs_oto)-1]
+#     # ampl_oto = sqrt.(Gxx_oto[1:end-1] .* dfs)
+#
+#     dfs = fhi .- flow
+#     ampl_oto = sqrt.(Gxx_oto .* dfs)
+#
+#     # Convert amplitude to SPL
+#     spls_oto = 20*log10.(ampl_oto./pref)
+#
+#     # return freqs_oto[1:end-1], spls_oto
+#     return freqs_oto, spls_oto
+# end
+
+
 """
-Convert the spectral density Gxx from narrow band to one-third octave band.
+Convert spectral SPL from narrow band to one-third octave band.
 """
-function narrow2onethird_Gxx(freqs, Gxx)
+function narrow2onethird_spl(freqs, spls)
 
-    df = freqs[2]-freqs[1]                                # (Hz) Bin width
+    spls_oto = zeros(eltype(spls), length(fc_oto)) # One-third octave autospectrum
 
-    fc = [1, 1.25, 1.6, 2.0, 2.5, 3.15, 4, 5, 6.3, 8]     # (Hz) band center frequencies
-    fc = vcat(fc, fc*10, fc*100, fc*1000, fc*10000, 1e5)
-
-    flow = [0.88, 1.13, 1.414, 1.76, 2.25, 2.825, 3.53, 4.4, 5.65, 7.07] # (Hz) lower bound of 1/3-oct bins
-    flow = vcat(flow, flow*10, flow*100, flow*1000, flow*10000, 0.88e5)
-
-    fhi = [1.13, 1.414, 1.76, 2.25, 2.825, 3.53, 4.4, 5.65, 7.07, 8.8] # (Hz) upper bound of 1/3-oct bins
-    fhi = vcat(fhi, fhi*10, fhi*100, fhi*1000, fhi*10000, 1.13e5)
-
-    freqs_oto = fc                                        # (Hz) One-third octave frequency bins
-    Gxx_oto = zeros(eltype(Gxx), length(freqs_oto))       # One-third octave autospectrum
-
-    for i in 1:length(freqs)
+    # Convert SPLs to pressure
+    # and distribute all narrow band bins onto OTO bins
+    otoi = 1
+    for (i, freq) in enumerate(freqs) # Iterate over narrow bins
 
         # Find oto bin
-        otoi = nothing
-
-        for j in 1:length(freqs_oto)
-            if flow[j] <= freqs[i] &&  freqs[i] < fhi[j]
-                otoi = j
-                break
+        if freq < flow_oto[1]
+            otoi = 1
+        elseif freq >= fhi_oto[end]
+            otoi = length(fc_oto)
+        else
+            for j in otoi:length(fc_oto)
+                if flow_oto[j] <= freq &&  freq < fhi_oto[j]
+                    otoi = j
+                    break
+                end
+                if j==length(fc_oto)
+                    error("LOGIC ERROR: OTO bin not found!")
+                end
             end
         end
 
-        if otoi != nothing
-            Gxx_oto[otoi] += Gxx[i]*df
+        # println("$i\t$otoi\t$(freq)\t$(fc_oto[otoi])")
+
+        # Convert SPL to pressure and add to this OTO bin
+        spls_oto[otoi] += 10^(spls[i]/10)
+    end
+
+    # Convert OTO pressure to OTO SPL
+    for i in 1:length(spls_oto)
+        if spls_oto[i] == 0
+            spls_oto[i] = -55
+        else
+            spls_oto[i] = 10*log10(spls_oto[i])
         end
     end
 
-    return freqs_oto, Gxx_oto
+    return deepcopy(fc_oto), spls_oto
 end
+
+
+# """
+# Convert spectral SPL from narrow band to one-third octave band.
+# """
+# function narrow2onethird_spl_DEPRE(freqs, spls; pref=20e-6)
+#
+#     # Convert SPL to amplitude
+#     ampl = pref * 10 .^ (spls ./ 20)
+#
+#     # Convert amplitude to pseudo-density
+#     df = freqs[2]-freqs[1]
+#     Gxx = ampl.^2 ./ df
+#
+#     # Convert narrow band to one-third octave band
+#     freqs_oto, Gxx_oto = narrow2onethird_Gxx(freqs, Gxx)
+#
+#     # 1/3 octave band bounds
+#     fc = freqs_oto
+#     flow = vcat(fc[2:end]/sqrt(2), fc[end-2]*sqrt(2))
+#     fhi = vcat(fc[3]/sqrt(2), fc[1:end-1]*sqrt(2))
+#
+#     # Convert pseudo-density to amplitude
+#     # dfs = vcat(freqs_oto[2]-freqs_oto[1], [freqs_oto[i+1] - freqs_oto[i] for i in 1:length(freqs_oto)-1])
+#     # ampl_oto = sqrt.(Gxx_oto .* dfs)
+#     # dfs = [freqs_oto[i+1] - freqs_oto[i] for i in 1:length(freqs_oto)-1]
+#     # ampl_oto = sqrt.(Gxx_oto[1:end-1] .* dfs)
+#
+#     dfs = fhi .- flow
+#     ampl_oto = sqrt.(Gxx_oto .* dfs)
+#
+#     # Convert amplitude to SPL
+#     spls_oto = 20*log10.(ampl_oto./pref)
+#
+#     # return freqs_oto[1:end-1], spls_oto
+#     return freqs_oto, spls_oto
+# end
+
+
+# """
+# Convert spectral SPL from narrow band to one-third octave band.
+# """
+# function onethird2narrow_spl_DEPRE(freqs_oto, df, spls_oto; pref=20e-6)
+#
+#
+#     # Convert SPL to OTO amplitude
+#     ampl_oto = pref * 10 .^ (spls_oto ./ 20)
+#
+#     # 1/3 octave band bounds
+#     fc = freqs_oto
+#     flow = vcat(fc[2:end]/sqrt(2), fc[end-2]*sqrt(2))
+#     fhi = vcat(fc[3]/sqrt(2), fc[1:end-1]*sqrt(2))
+#
+#     # Convert amplitude to pseudo-density
+#     dfs_oto = fhi .- flow
+#     Gxx_oto = ampl_oto.^2 ./ dfs_oto
+#
+#     # Convert one-third octave band to narrow band
+#     freqs, Gxx = onethird2narrow_Gxx(freqs_oto, Gxx_oto, df)
+#
+#     # Convert pseudo-density to amplitude
+#     ampl = sqrt.(Gxx .* df)
+#
+#     # Convert amplitude to SPL
+#     spls = 20*log10.(ampl ./ pref)
+#
+#     return freqs, spls
+# end
+#
+#
+# """
+# Convert the spectral density Gxx from one-third octave band to narrow band.
+# """
+# function onethird2narrow_Gxx(freqs_oto, Gxx_oto, df)
+#
+#     fc = freqs_oto
+#     flow = vcat(fc[2:end]/sqrt(2), fc[end-2]*sqrt(2))
+#     fhi = vcat(fc[3]/sqrt(2), fc[1:end-1]*sqrt(2))
+#
+#     freqs = collect(flow[1]:df:fhi[end])
+#     Gxx = zeros(eltype(Gxx_oto), length(freqs))
+#
+#     for otoi in 1:length(fc)
+#
+#         # Calculate average spectral density in this interval
+#         df_oto = fhi[otoi]-flow[otoi]
+#         this_Gxx = Gxx_oto[otoi]/df_oto
+#         # this_Gxx = Gxx_oto[otoi]
+#         # this_Gxx = Gxx_oto[otoi]*df_oto/df
+#         # this_Gxx = Gxx_oto[otoi]*df/df_oto
+#
+#         # Find corresponding narrow band interval
+#         loi = findfirst(f -> f>=flow[otoi], freqs)
+#         upi = findlast(f -> f<fhi[otoi], freqs)
+#         upi = upi==nothing ? length(freqs) : upi
+#
+#         # Distribute average spectral density into the narrow band bins
+#         Gxx[loi:upi] .= this_Gxx
+#
+#     end
+#
+#     return freqs, Gxx
+# end
+
 
 """
 Convert spectral SPL from narrow band to one-third octave band.
 """
-function narrow2onethird_spl(freqs, spls; pref=20e-6)
+function onethird2narrow_spl(freqs_oto, df, spls_oto; smooth=true)
 
-    # Convert SPL to amplitude
-    ampl = pref * 10 .^ (spls ./ 20)
+    # Find interval of frequencies
+    fc_min = freqs_oto[findfirst(spl -> spl>-55, spls_oto)]
+    fc_max = freqs_oto[findlast(spl -> spl>-55, spls_oto)]
+    flow_mini = findlast(f -> f<=fc_min, flow_oto)
+    fhi_maxi = findfirst(f -> f>fc_max, fhi_oto)
 
-    # Convert amplitude to pseudo-density
-    df = freqs[2]-freqs[1]
-    Gxx = ampl.^2 ./ df
+    # # Chop the bins that are smaller than the narrow band frequency
+    # # This leads to losing from small energy, but makes things simpler
+    # while fhi_oto[flow_mini] - flow_oto[flow_mini] < df && flow_mini < length(fc_oto)
+    #     flow_mini += 1
+    # end
 
-    # Convert narrow band to one-third octave band
-    freqs_oto, Gxx_oto = narrow2onethird_Gxx(freqs, Gxx)
+    flow_min = flow_oto[flow_mini]
+    fhi_max = fhi_oto[fhi_maxi]
 
-    # 1/3 octave band bounds
-    fc = freqs_oto
-    flow = vcat(fc[2:end]/sqrt(2), fc[end-2]*sqrt(2))
-    fhi = vcat(fc[3]/sqrt(2), fc[1:end-1]*sqrt(2))
+    freqs = collect(flow_min:df:fhi_max)
+    spls = zeros(eltype(spls_oto), length(freqs))
 
-    # Convert pseudo-density to amplitude
-    # dfs = vcat(freqs_oto[2]-freqs_oto[1], [freqs_oto[i+1] - freqs_oto[i] for i in 1:length(freqs_oto)-1])
-    # ampl_oto = sqrt.(Gxx_oto .* dfs)
-    # dfs = [freqs_oto[i+1] - freqs_oto[i] for i in 1:length(freqs_oto)-1]
-    # ampl_oto = sqrt.(Gxx_oto[1:end-1] .* dfs)
-
-    dfs = fhi .- flow
-    ampl_oto = sqrt.(Gxx_oto .* dfs)
-
-    # Convert amplitude to SPL
-    spls_oto = 20*log10.(ampl_oto./pref)
-
-    # return freqs_oto[1:end-1], spls_oto
-    return freqs_oto, spls_oto
-end
-
-
-"""
-Convert spectral SPL from narrow band to one-third octave band.
-"""
-function onethird2narrow_spl(freqs_oto, df, spls_oto; pref=20e-6)
-
-
-    # Convert SPL to OTO amplitude
-    ampl_oto = pref * 10 .^ (spls_oto ./ 20)
-
-    # 1/3 octave band bounds
-    fc = freqs_oto
-    flow = vcat(fc[2:end]/sqrt(2), fc[end-2]*sqrt(2))
-    fhi = vcat(fc[3]/sqrt(2), fc[1:end-1]*sqrt(2))
-
-    # Convert amplitude to pseudo-density
-    dfs_oto = fhi .- flow
-    Gxx_oto = ampl_oto.^2 ./ dfs_oto
-
-    # Convert one-third octave band to narrow band
-    freqs, Gxx = onethird2narrow_Gxx(freqs_oto, Gxx_oto, df)
-
-    # Convert pseudo-density to amplitude
-    ampl = sqrt.(Gxx .* df)
-
-    # Convert amplitude to SPL
-    spls = 20*log10.(ampl ./ pref)
-
-    return freqs, spls
-end
-
-
-"""
-Convert the spectral density Gxx from one-third octave band to narrow band.
-"""
-function onethird2narrow_Gxx(freqs_oto, Gxx_oto, df)
-
-    fc = freqs_oto
-    flow = vcat(fc[2:end]/sqrt(2), fc[end-2]*sqrt(2))
-    fhi = vcat(fc[3]/sqrt(2), fc[1:end-1]*sqrt(2))
-
-    freqs = collect(flow[1]:df:fhi[end])
-    Gxx = zeros(eltype(Gxx_oto), length(freqs))
-
-    for otoi in 1:length(fc)
-
-        # Calculate average spectral density in this interval
-        df_oto = fhi[otoi]-flow[otoi]
-        this_Gxx = Gxx_oto[otoi]/df_oto
-        # this_Gxx = Gxx_oto[otoi]
-        # this_Gxx = Gxx_oto[otoi]*df_oto/df
-        # this_Gxx = Gxx_oto[otoi]*df/df_oto
+    for otoi in 1:length(freqs_oto)
 
         # Find corresponding narrow band interval
-        loi = findfirst(f -> f>=flow[otoi], freqs)
-        upi = findlast(f -> f<fhi[otoi], freqs)
-        upi = upi==nothing ? length(freqs) : upi
+        loi = findfirst(f -> f>=flow_oto[flow_mini + otoi], freqs)
+        upi = findlast(f -> f<fhi_oto[flow_mini + otoi], freqs)
+        loi = loi==nothing ? length(freqs) : loi
+        upi = upi==nothing ? 1 : upi
 
-        # Distribute average spectral density into the narrow band bins
-        Gxx[loi:upi] .= this_Gxx
+        # println("$otoi\t$(flow_oto[otoi])\t$(fhi_oto[otoi])\t$loi\t$upi\t$(freqs[loi])\t$(freqs[upi])")
+        # println("$(upi-loi+1)\t$(log10(upi-loi+1))\t$(spls_oto[otoi] - log10(upi-loi+1))")
+
+        # Distribute this OTO spl bin into the narrow band SPL bins
+        spls[loi:upi] .+= spls_oto[otoi] - 10*log10(upi-loi+1)
 
     end
 
-    return freqs, Gxx
+    # Smooth curve up through spline if requested
+    if smooth
+        spls_oto_dist = zeros(eltype(spls_oto), length(spls_oto))
+
+        # Find distributed OTO SPL values
+        for (i, freq_oto) in enumerate(freqs_oto)
+
+            # Range where this OTO freq could be
+            rng = searchsorted(freqs, freq_oto)
+            rng = length(rng) >= 1 ? rng : rng.stop:rng.start
+
+            # Pick the first valid position in that range
+            freq_i = rng[findfirst( i -> 1 <= i <= length(spls), rng)]
+
+            spls_oto_dist[i] = spls[freq_i]
+        end
+
+        # Interpolate the distributed OTO SPL through spline
+        spls[:] .= math.akima(freqs_oto, spls_oto_dist, freqs)
+    end
+
+    # Bring empty bins down to minimum dB
+    for i in 1:length(spls)
+        if spls[i] == 0 || spls[i] < -55
+            spls[i] = -55
+        end
+    end
+
+
+    return freqs, spls
 end

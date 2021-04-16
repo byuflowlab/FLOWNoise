@@ -54,7 +54,7 @@ read_data(dataset_infos; datasets_psw=datasets_psw, datasets_bpm=datasets_bpm)
 """
 function read_data(dataset_infos;
                     datasets_psw=def_datasets_psw, datasets_bpm=def_datasets_bpm,
-                    psw_fieldnames=["pressure", "spl_spectrum", "OASPLdB", "OASPLdBA"],
+                    psw_fieldnames=["pressure", "spl_spectrum", "spl_octFilt_spectrum", "OASPLdB", "OASPLdBA"],
                     bpm_fieldnames=["spl_spectrum", "splA_spectrum", "OASPLdB", "OASPLdBA", "frequencies"],
                     optargs...)
 
@@ -237,9 +237,14 @@ function plot_spectrum_spl(dataset_infos, microphones, BPF, sph_ntht, pangle::Fu
                             datasets_psw=def_datasets_psw,
                             datasets_bpm=def_datasets_bpm,
                             onethirdoctave=false,
+                            psworg_onethirdoctave=false,
+                            smooth_narrow=true,
                             Aweighted=false,
+                            components=false,
+                            add_broadband=true,
                             plot_csv=[],
                             xBPF=true, BPF_lines=0,
+                            figname="automatic",
                             xlims=[6*10.0^(-1.0), 1.75e2], ylims=[0, 60],
                             Pref=L" re $20\mu$Pa",
                             verbose=true
@@ -249,7 +254,7 @@ function plot_spectrum_spl(dataset_infos, microphones, BPF, sph_ntht, pangle::Fu
     # RPM          = 5400                  # RPM of solution
     # BPF          = 2*RPM/60              # Blade passing frequency
 
-    fieldname_psw = "spl_spectrum"        # Field to plot
+    fieldname_psw = onethirdoctave && psworg_onethirdoctave ? "spl_octFilt_spectrum" : "spl_spectrum"    # Field to plot
     fieldname_bpm = "spl"*"A"^Aweighted*"_spectrum"        # Field to plot
 
     micis         = Int.((-microphones .+ 180) * sph_ntht/360 .+ 1)    # Index of each microphone
@@ -260,7 +265,8 @@ function plot_spectrum_spl(dataset_infos, microphones, BPF, sph_ntht, pangle::Fu
 
     for mici in micis
 
-        plt.figure("$(fieldname_bpm)-$(mici)", figsize=[7, 3.5])
+        _figname = figname=="automatic" ? "$(fieldname_bpm)-$(mici)" : figname
+        plt.figure(_figname, figsize=[7, 3.5])
 
         for (csv_filename, lbl, stl, weight, optargs) in plot_csv
             data = CSV.read(csv_filename, DataFrames.DataFrame, datarow=1)
@@ -276,7 +282,7 @@ function plot_spectrum_spl(dataset_infos, microphones, BPF, sph_ntht, pangle::Fu
             xi = data_psw["hs"]["Frequency"]
             yi = data_psw["hs"]["Total_dB"*"A"^Aweighted]
             freqs_psw = data_psw["field"][mici, 1, 2:end, xi]
-            spl_psw = data_psw["field"][mici, 1, 2:end, yi]
+            org_spl_psw = data_psw["field"][mici, 1, 2:end, yi]
 
             # Fetch broadband noise
             data_bpm = datasets_bpm[read_path_bpm][fieldname_bpm]
@@ -286,11 +292,13 @@ function plot_spectrum_spl(dataset_infos, microphones, BPF, sph_ntht, pangle::Fu
             # Convert narrow -> 1/3 or 1/3 -> narrow band to make tonal and
             # broadband comparable
             if onethirdoctave
-                freqs_psw, spl_psw = narrow2onethird_spl(freqs_psw, spl_psw)
+                if !psworg_onethirdoctave
+                    freqs_psw, org_spl_psw = narrow2onethird_spl(freqs_psw, org_spl_psw)
+                end
             else
                 df = (freqs_psw[2]-freqs_psw[1])
-                println("Converting to narrow band of bin width $(round(df, digits=1)) Hz")
-                freqs_bpm, org_spl_bpm = onethird2narrow_spl(freqs_bpm, df, org_spl_bpm)
+                println("Converting BPM to narrow band of bin width $(round(df, digits=1)) Hz")
+                freqs_bpm, org_spl_bpm = onethird2narrow_spl(freqs_bpm, df, org_spl_bpm; smooth=smooth_narrow)
             end
 
             # Define the range of frequency as the union of both components
@@ -298,7 +306,9 @@ function plot_spectrum_spl(dataset_infos, microphones, BPF, sph_ntht, pangle::Fu
             if freqs_psw[end] < freqs_bpm[end]  # Add BPM range
                 bpm_i = findfirst( f -> f > freqs_psw[end], freqs_bpm)
                 freqs = vcat(freqs, freqs_bpm[bpm_i:end])
-                spl_psw = vcat(spl_psw, [-30.0 for i in bpm_i:length(freqs_bpm)])
+                spl_psw = vcat(org_spl_psw, [-30.0 for i in bpm_i:length(freqs_bpm)])
+            else
+                spl_psw = org_spl_psw
             end
 
             # Interpolate broadband data into the same frequencies than tonal data
@@ -307,7 +317,15 @@ function plot_spectrum_spl(dataset_infos, microphones, BPF, sph_ntht, pangle::Fu
             # Add tonal and broadband SPL together
             spl = addSPL(spl_psw, spl_bpm)
 
-            plt.plot(freqs*xscaling, spl, stl, alpha=0.75, label=lbl, color=clr)
+            if components
+                plt.plot(freqs*xscaling, spl, "-", alpha=0.75, label=lbl*" --- Total", color=clr)
+                plt.plot(freqs_bpm*xscaling, org_spl_bpm, ":", alpha=0.75, label=lbl*" --- BPM", color=clr)
+                plt.plot(freqs_psw*xscaling, org_spl_psw, "--", alpha=0.75, label=lbl*" --- FW-H", color=clr)
+            elseif !add_broadband
+                plt.plot(freqs_psw*xscaling, org_spl_psw, stl, alpha=0.75, label=lbl, color=clr)
+            else
+                plt.plot(freqs*xscaling, spl, ("o"^onethirdoctave)*stl, alpha=0.75, label=lbl, color=clr)
+            end
 
         end
 

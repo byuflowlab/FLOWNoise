@@ -66,4 +66,16 @@ function read(io, T, n)
     return [read(io, T) for i in 1:n]
 end
 
+
+
+# ---------- 1/3 Octave Bands --------------------
+const fc_oto1 = [1, 1.25, 1.6, 2.0, 2.5, 3.15, 4, 5, 6.3, 8]     # (Hz) band center frequencies
+const fc_oto = vcat(fc_oto1, fc_oto1*10, fc_oto1*100, fc_oto1*1000, fc_oto1*10000, 1e5)
+
+const flow_oto1 = [0.88, 1.13, 1.414, 1.76, 2.25, 2.825, 3.53, 4.4, 5.65, 7.07] # (Hz) lower bound of 1/3-oct bins
+const flow_oto = vcat(flow_oto1, flow_oto1*10, flow_oto1*100, flow_oto1*1000, flow_oto1*10000, 0.88e5)
+
+const fhi_oto1 = [1.13, 1.414, 1.76, 2.25, 2.825, 3.53, 4.4, 5.65, 7.07, 8.8] # (Hz) upper bound of 1/3-oct bins
+const fhi_oto = vcat(fhi_oto1, fhi_oto1*10, fhi_oto1*100, fhi_oto1*1000, fhi_oto1*10000, 1.13e5)
+
 end # END OF MODULE
