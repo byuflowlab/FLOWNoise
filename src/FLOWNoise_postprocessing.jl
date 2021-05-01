@@ -121,12 +121,15 @@ plot_pressure(dataset_infos, microphones, RPM, sph_ntht, pangle; datasets_psw=da
 ```
 """
 function plot_pressure(dataset_infos, microphones, RPM, sph_ntht, pangle::Function;
-                                fieldname="pressure", datasets_psw=def_datasets_psw)
+                                fieldname="pressure", datasets_psw=def_datasets_psw,
+                                xlims=[0, 3])
     # microphones  = [-45, -90]            # (deg) microphones to plot
     # RPM          = 5400                  # RPM of solution
 
     # fieldname = "pressure"               # Field to plot
-    mics         = Int.((-microphones .+ 180) * sph_ntht/360 .+ 1)   # Index of every microphone
+    hash = Dict((round(pangle(mici), digits=1), mici) for mici in 1:sph_ntht)
+    # mics         = Int.((-microphones .+ 180) * sph_ntht/360 .+ 1)   # Index of every microphone
+    mics         = [hash[deg] for deg in microphones]
 
     for mici in mics
 
@@ -140,7 +143,7 @@ function plot_pressure(dataset_infos, microphones, RPM, sph_ntht, pangle::Functi
                                               ])
             plt.subplot(310+ploti)
             if ploti==3; plt.xlabel("Rotor revolution"); end;
-            plt.xlim([0, 3])
+            plt.xlim(xlims)
             plt.ylabel(ylbl)
             plt.grid(true, which="major", color="0.8", linestyle="--")
             plt.grid(true, which="minor", color="0.8", linestyle="--")
@@ -257,7 +260,11 @@ function plot_spectrum_spl(dataset_infos, microphones, BPF, sph_ntht, pangle::Fu
     fieldname_psw = onethirdoctave && psworg_onethirdoctave ? "spl_octFilt_spectrum" : "spl_spectrum"    # Field to plot
     fieldname_bpm = "spl"*"A"^Aweighted*"_spectrum"        # Field to plot
 
-    micis         = Int.((-microphones .+ 180) * sph_ntht/360 .+ 1)    # Index of each microphone
+
+    hash = Dict((round(pangle(mici), digits=1), mici) for mici in 1:sph_ntht)
+    # micis         = Int.((-microphones .+ 180) * sph_ntht/360 .+ 1)    # Index of each microphone
+    micis         = [hash[deg] for deg in microphones]
+
     xscaling = (1/BPF)^xBPF
 
     aux = "SPL"*(onethirdoctave ? L"_{1/3}" : "")
@@ -349,7 +356,7 @@ function plot_spectrum_spl(dataset_infos, microphones, BPF, sph_ntht, pangle::Fu
         plt.xlabel("Frequency"*(xBPF ? " / BPF" : " (Hz)"))
         plt.ylim(ylims)
         plt.ylabel(ylbl)
-        if BPF_lines==0
+        if BPF_lines==0 && BPF_lines!=-1
             plt.grid(true, which="major", color="0.8", linestyle=":")
             plt.grid(true, which="minor", color="0.8", linestyle=":")
         end
