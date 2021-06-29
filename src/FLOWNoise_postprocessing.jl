@@ -560,6 +560,7 @@ function plot_directivity_oaspl(dataset_infos, pangle::Function;
                                     datasets_psw=def_datasets_psw,
                                     datasets_bpm=def_datasets_bpm,
                                     Aweighted=false,
+                                    add_broadband=true,
                                     plot_csv=[],
                                     thetalims=180*[1, -1],
                                     thetagrids=collect(-180:45/2:180)[[3, 5, 7, 8, 9, 10, 11, 13, 15, 17]],
@@ -593,7 +594,11 @@ function plot_directivity_oaspl(dataset_infos, pangle::Function;
         oaspl = addSPL(oaspl_psw, oaspl_bpm)
 
         angles = pangle.(1:length(oaspl))
-        plt.polar(pi/180*angles, oaspl, stl, label=lbl, alpha=0.8, color=clr)
+        if add_broadband
+            plt.polar(pi/180*angles, oaspl, stl, label=lbl, alpha=0.8, color=clr)
+        else
+            plt.polar(pi/180*angles, oaspl_psw, stl, label=lbl, alpha=0.8, color=clr)
+        end
     end
 
     ax = plt.gca()
