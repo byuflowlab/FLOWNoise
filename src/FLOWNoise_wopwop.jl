@@ -964,7 +964,8 @@ function read_pswfield(fieldnames::Array{String, 1}, read_path;
         data = read_pswfield(fieldname, read_path; re20=fieldname in re20crit,
                                                        tec=tec, optargs...)
 
-        datas[fieldname] = Dict("field"=>data[1], "hd"=>data[2], "hs"=>data[3])
+
+        datas[splitdir(fieldname)[2]] = Dict("field"=>data[1], "hd"=>data[2], "hs"=>data[3])
     end
 
     return datas
