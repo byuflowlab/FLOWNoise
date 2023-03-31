@@ -961,7 +961,7 @@ function read_pswfield(fieldnames::Array{String, 1}, read_path;
     datas = Dict()
 
     for fieldname in fieldnames
-        data = read_pswfield(fieldname, read_path; re20=fieldname in re20crit,
+        data = read_pswfield(fieldname, read_path; re20=!prod(!contains(fieldname, crit ) for crit in re20crit),
                                                        tec=tec, optargs...)
 
 
