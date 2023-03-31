@@ -54,7 +54,7 @@ read_data(dataset_infos; datasets_psw=datasets_psw, datasets_bpm=datasets_bpm)
 """
 function read_data(dataset_infos;
                     datasets_psw=def_datasets_psw, datasets_bpm=def_datasets_bpm,
-                    psw_fieldnames=["pressure", "spl_spectrum", "spl_octFilt_spectrum", "OASPLdB", "OASPLdBA"],
+                    psw_fieldnames=["pressure", joinpath("segmentProcess", "spl_spectrum"), joinpath("octaveFilterSP", "spl_octFilt_spectrum"), joinpath("segmentProcess", "OASPLdB"), joinpath("segmentProcess", "OASPLdBA")],
                     bpm_fieldnames=["spl_spectrum", "splA_spectrum", "OASPLdB", "OASPLdBA", "frequencies"],
                     optargs...)
 
@@ -276,7 +276,7 @@ function plot_spectrum_spl(dataset_infos, microphones, BPF, sph_ntht, pangle::Fu
         plt.figure(_figname, figsize=[7, 3.5])
 
         for (csv_filename, lbl, stl, weight, optargs) in plot_csv
-            data = CSV.read(csv_filename, DataFrames.DataFrame, datarow=1)
+            data = CSV.read(csv_filename, DataFrames.DataFrame, skipto=1)
             spl_exp = weight ? aWeight.(data[!, 1], data[!, 2]) : data[!, 2]
             plt.plot(data[!, 1]*xscaling, spl_exp, stl; label=lbl, optargs...)
         end
@@ -445,7 +445,7 @@ function plot_directivity_splbpf(dataset_infos, BPFi, BPF, pangle::Function;
     plt.figure("$(fieldname_bpm)-$(BPFi)", figsize=[3, 3]*2)
 
     for (csv_filename, lbl, stl, weight, optargs) in plot_csv
-        data = CSV.read(csv_filename, DataFrames.DataFrame, datarow=1)
+        data = CSV.read(csv_filename, DataFrames.DataFrame, skipto=1)
         plt.polar(pi/180*data[!, 2], data[!, 1], stl; label=lbl, optargs...)
     end
 
@@ -574,7 +574,7 @@ function plot_directivity_oaspl(dataset_infos, pangle::Function;
     plt.figure("$(fieldname_bpm)", figsize=[3, 3]*2)
 
     for (csv_filename, lbl, stl, weight, optargs) in plot_csv
-        data = CSV.read(csv_filename, DataFrames.DataFrame, datarow=1)
+        data = CSV.read(csv_filename, DataFrames.DataFrame, skipto=1)
         plt.polar(pi/180*data[!, 2], data[!, 1], stl; label=lbl, optargs...)
     end
 
