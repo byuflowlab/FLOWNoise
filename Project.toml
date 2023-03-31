@@ -1,7 +1,7 @@
 name = "FLOWNoise"
 uuid = "d27480ee-285d-533b-ae3d-5018956ae0bc"
 author = ["Eduardo Alvarez <Edo.AlvarezR@gmail.com> and Tyler Critchfield <trcritchfield@gmail.com>"]
-version = "2.1.1"
+version = "2.2.1"
 
 [deps]
 FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
