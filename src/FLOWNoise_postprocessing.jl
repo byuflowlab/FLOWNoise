@@ -10,58 +10,58 @@
 =###############################################################################
 
 """
-    `read_data(dataset_infos; datasets_psw=def_datasets_psw,
+    `read_data(dataset_infos; datasets_pww=def_datasets_pww,
                 datasets_bpm=def_datasets_bpm,
-                psw_fieldnames=["pressure", "spl_spectrum", "OASPLdB", "OASPLdBA"],
+                pww_fieldnames=["pressure", "spl_spectrum", "OASPLdB", "OASPLdBA"],
                 bpm_fieldnames=["spl_spectrum", "splA_spectrum", "OASPLdB", "OASPLdBA"],
                 optargs...)`
 
 Read a series of datasets comprised of PSU-WOPWOP and BPM outputs and stores
-them under the dictionaries `datasets_psw` and `datasets_bpm`.
+them under the dictionaries `datasets_pww` and `datasets_bpm`.
 
 # ARGUMENTS
 * `dataset_infos`    : Array of tuples (see example).
 
 # OPTIONAL ARGUMENTS
-* `psw_fieldnames`   : Fields to read from PSU-WOPWOP.
+* `pww_fieldnames`   : Fields to read from PSU-WOPWOP.
 * `bpm_fieldnames`   : Fields to read from BPM.
-* `optargs...`       : Optional arguments passed to `fetch_pswdataset(...)` and
+* `optargs...`       : Optional arguments passed to `fetch_pwwdataset(...)` and
                         `fetch_bpmdataset(...)`.
 
 # EXAMPLE
 
 ```julia
 # Dataset to read and associated information
-dataset_infos = [   # (label, PSW solution, BPM solution, ...)
+dataset_infos = [   # (label, PWW solution, BPM solution, ...)
 
                     ("FLOWUnsteady w/BEMT",
-                        "temps/example_dji9443_00_psw00/runcase/",
+                        "temps/example_dji9443_00_pww00/runcase/",
                         "temps/example_dji9443_00_bpm00",
                         "-", "r"),
 
                     ("FLOWUnsteady w/VPM",
-                        "temps/example_dji9443_01_psw00/runcase/",
+                        "temps/example_dji9443_01_pww00/runcase/",
                         "temps/example_dji9443_01_bpm00",
                         "-", "b")
                 ]
 
-datasets_psw = Dict()     # Stores PSW data in this dictionary
+datasets_pww = Dict()     # Stores PWW data in this dictionary
 datasets_bpm = Dict()     # Stores BPM data in this dictionary
 
 # Read datasets and stores them in dictionaries
-read_data(dataset_infos; datasets_psw=datasets_psw, datasets_bpm=datasets_bpm)
+read_data(dataset_infos; datasets_pww=datasets_pww, datasets_bpm=datasets_bpm)
 ```
 """
 function read_data(dataset_infos;
-                    datasets_psw=def_datasets_psw, datasets_bpm=def_datasets_bpm,
-                    psw_fieldnames=["pressure", joinpath("segmentProcess", "spl_spectrum"), joinpath("octaveFilterSP", "spl_octFilt_spectrum"), joinpath("segmentProcess", "OASPLdB"), joinpath("segmentProcess", "OASPLdBA")],
+                    datasets_pww=def_datasets_pww, datasets_bpm=def_datasets_bpm,
+                    pww_fieldnames=["pressure", joinpath("segmentProcess", "spl_spectrum"), joinpath("octaveFilterSP", "spl_octFilt_spectrum"), joinpath("segmentProcess", "OASPLdB"), joinpath("segmentProcess", "OASPLdBA")],
                     bpm_fieldnames=["spl_spectrum", "splA_spectrum", "OASPLdB", "OASPLdBA", "frequencies"],
                     optargs...)
 
     # Read each dataset
-    for (lbl, psw_read_path, bpm_read_path) in dataset_infos
+    for (lbl, pww_read_path, bpm_read_path) in dataset_infos
 
-        fetch_pswdataset(psw_read_path; datasets=datasets_psw, fieldnames=psw_fieldnames, optargs...)
+        fetch_pwwdataset(pww_read_path; datasets=datasets_pww, fieldnames=pww_fieldnames, optargs...)
         fetch_bpmdataset(bpm_read_path; datasets=datasets_bpm, fieldnames=bpm_fieldnames, optargs...)
 
     end
@@ -71,7 +71,7 @@ end
 
 """
 `plot_pressure(dataset_infos, microphones, RPM, sph_ntht, pangle;
-fieldname="pressure", datasets_psw=def_datasets_psw)`
+fieldname="pressure", datasets_pww=def_datasets_pww)`
 
 Plots the pressure waveform of the tonal component of noise calculated by
 PSU-WOPWOP at the requested microphone positions of a 2D grid.
@@ -88,40 +88,40 @@ PSU-WOPWOP at the requested microphone positions of a 2D grid.
                             azimuthal dimension of the grid).
 
 # OPTIONAL ARGUMENTS
-* `datasets_psw`      : Datasets where to read data from.
+* `datasets_pww`      : Datasets where to read data from.
 
 # EXAMPLE
 
 ```julia
 # Dataset to read and associated information
-dataset_infos = [   # (label, PSW solution, BPM solution, line style, color)
+dataset_infos = [   # (label, PWW solution, BPM solution, line style, color)
 
                     ("FLOWUnsteady w/BEMT",
-                        "temps/example_dji9443_00_psw00/runcase/",
+                        "temps/example_dji9443_00_pww00/runcase/",
                         "temps/example_dji9443_00_bpm00",
                         "-", "r"),
 
                     ("FLOWUnsteady w/VPM",
-                        "temps/example_dji9443_01_psw00/runcase/",
+                        "temps/example_dji9443_01_pww00/runcase/",
                         "temps/example_dji9443_01_bpm00",
                         "-", "b")
                 ]
 
-datasets_psw = Dict()     # Stores PSW data in this dictionary
+datasets_pww = Dict()     # Stores PWW data in this dictionary
 datasets_bpm = Dict()     # Stores BPM data in this dictionary
 
 # Read datasets and stores them in dictionaries
-read_data(dataset_infos; datasets_psw=datasets_psw, datasets_bpm=datasets_bpm)
+read_data(dataset_infos; datasets_pww=datasets_pww, datasets_bpm=datasets_bpm)
 
 # Plot pressure waveform
 microphones  = [-45, -90]            # (deg) microphones to plot
 RPM          = 5400                  # RPM of solution
 
-plot_pressure(dataset_infos, microphones, RPM, sph_ntht, pangle; datasets_psw=datasets_psw)
+plot_pressure(dataset_infos, microphones, RPM, sph_ntht, pangle; datasets_pww=datasets_pww)
 ```
 """
 function plot_pressure(dataset_infos, microphones, RPM, sph_ntht, pangle::Function;
-                                fieldname="pressure", datasets_psw=def_datasets_psw,
+                                fieldname="pressure", datasets_pww=def_datasets_pww,
                                 xlims=[0, 3])
     # microphones  = [-45, -90]            # (deg) microphones to plot
     # RPM          = 5400                  # RPM of solution
@@ -151,7 +151,7 @@ function plot_pressure(dataset_infos, microphones, RPM, sph_ntht, pangle::Functi
 
             for (di, (lbl, read_path, _, stl, clr)) in enumerate(dataset_infos)
 
-                data = datasets_psw[read_path][fieldname]
+                data = datasets_pww[read_path][fieldname]
                 xi = data["hs"]["ObserverTimes"]
                 yi = data["hs"][dlbl]
 
@@ -171,7 +171,7 @@ end
 
 """
     `plot_spectrum_spl(dataset_infos, microphones, BPF, sph_ntht, pangle::Function;
-                                datasets_psw=def_datasets_psw,
+                                datasets_pww=def_datasets_pww,
                                 datasets_bpm=def_datasets_bpm,
                                 onethirdoctave=false,
                                 Aweighted=false,
@@ -195,10 +195,10 @@ Plot the SPL spectrum in `dataset_infos` at the given microphones.
                             azimuthal dimension of the grid).
 
 # OPTIONAL ARGUMENTS
-* `datasets_psw`      : PSU-WOPWOP datasets where to read data from.
+* `datasets_pww`      : PSU-WOPWOP datasets where to read data from.
 * `datasets_bpm`      : BPM datasets where to read data from.
 * `onethirdoctave`    : Converts the plot to 1/3 octave bands, otherwise it'll
-                            convert BPM's 1/3 bands to narrow bands of PSW.
+                            convert BPM's 1/3 bands to narrow bands of PWW.
 * `Aweighted`         : Plot A-weighted SPL.
 * `plot_csv`          : Give it the path to a CSV file to include in the plot.
 * `xBPF`              : Scale frequencies by BPF if true.
@@ -207,18 +207,18 @@ Plot the SPL spectrum in `dataset_infos` at the given microphones.
 # EXAMPLE
 ```julia
 # Dataset to read and associated information
-dataset_infos = [   # (label, PSW solution, BPM solution, BPM freq bins, line style, color)
+dataset_infos = [   # (label, PWW solution, BPM solution, BPM freq bins, line style, color)
                     ("FLOWUnsteady w/BEMT",
-                        "temps/example_dji9443_00_psw00/runcase/",
+                        "temps/example_dji9443_00_pww00/runcase/",
                         "temps/example_dji9443_00_bpm00",
                         "-", "r")
                 ]
 
-datasets_psw = Dict()     # Stores PSW data in this dictionary
+datasets_pww = Dict()     # Stores PWW data in this dictionary
 datasets_bpm = Dict()     # Stores BPM data in this dictionary
 
 # Read datasets and stores them in dictionaries
-FLOWNoise.read_data(dataset_infos; datasets_psw=datasets_psw, datasets_bpm=datasets_bpm)
+FLOWNoise.read_data(dataset_infos; datasets_pww=datasets_pww, datasets_bpm=datasets_bpm)
 
 microphones  = [-45]                 # (deg) microphone to plot
 Aweighted    = false                 # Plot A-weighted SPL
@@ -229,7 +229,7 @@ plot_experimental = [(filename, "Experimental", "k", Aweighted, [])]
 
 # Plot spectrum in Hz with blade-passing-frequency lines
 FLOWNoise.plot_spectrum_spl(dataset_infos, microphones, BPF, sph_ntht, pangle;
-                              datasets_psw=datasets_psw, datasets_bpm=datasets_bpm,
+                              datasets_pww=datasets_pww, datasets_bpm=datasets_bpm,
                               Aweighted=Aweighted,
                               plot_csv=plot_experimental,
                               xBPF=false, xlims=[100, 3e4], BPF_lines=21)
@@ -237,10 +237,10 @@ FLOWNoise.plot_spectrum_spl(dataset_infos, microphones, BPF, sph_ntht, pangle;
 
 """
 function plot_spectrum_spl(dataset_infos, microphones, BPF, sph_ntht, pangle::Function;
-                            datasets_psw=def_datasets_psw,
+                            datasets_pww=def_datasets_pww,
                             datasets_bpm=def_datasets_bpm,
                             onethirdoctave=false,
-                            psworg_onethirdoctave=false,
+                            pwworg_onethirdoctave=false,
                             smooth_narrow=true,
                             Aweighted=false,
                             components=false,
@@ -257,7 +257,7 @@ function plot_spectrum_spl(dataset_infos, microphones, BPF, sph_ntht, pangle::Fu
     # RPM          = 5400                  # RPM of solution
     # BPF          = 2*RPM/60              # Blade passing frequency
 
-    fieldname_psw = onethirdoctave && psworg_onethirdoctave ? "spl_octFilt_spectrum" : "spl_spectrum"    # Field to plot
+    fieldname_pww = onethirdoctave && pwworg_onethirdoctave ? "spl_octFilt_spectrum" : "spl_spectrum"    # Field to plot
     fieldname_bpm = "spl"*"A"^Aweighted*"_spectrum"        # Field to plot
 
 
@@ -272,7 +272,7 @@ function plot_spectrum_spl(dataset_infos, microphones, BPF, sph_ntht, pangle::Fu
 
     for mici in micis
 
-        _figname = figname=="automatic" ? "$(fieldname_bpm)-$(mici)" : figname
+        _figname = figname=="automatic" ? "$(fieldname_bpm)-$(mici)"*("-oto"^onethirdoctave)*("tonal"^!add_broadband) : figname
         plt.figure(_figname, figsize=[7, 3.5])
 
         for (csv_filename, lbl, stl, weight, optargs) in plot_csv
@@ -282,14 +282,14 @@ function plot_spectrum_spl(dataset_infos, microphones, BPF, sph_ntht, pangle::Fu
         end
 
         # Plot datasets
-        for (lbl, read_path_psw, read_path_bpm, stl, clr) in dataset_infos
+        for (lbl, read_path_pww, read_path_bpm, stl, clr) in dataset_infos
 
             # Fetch tonal noise
-            data_psw = datasets_psw[read_path_psw][fieldname_psw]
-            xi = data_psw["hs"]["Frequency"]
-            yi = data_psw["hs"]["Total_dB"*"A"^Aweighted]
-            freqs_psw = data_psw["field"][mici, 1, 2:end, xi]
-            org_spl_psw = data_psw["field"][mici, 1, 2:end, yi]
+            data_pww = datasets_pww[read_path_pww][fieldname_pww]
+            xi = data_pww["hs"]["Frequency"]
+            yi = data_pww["hs"]["Total_dB"*"A"^Aweighted]
+            freqs_pww = data_pww["field"][mici, 1, 2:end, xi]
+            org_spl_pww = data_pww["field"][mici, 1, 2:end, yi]
 
             # Fetch broadband noise
             data_bpm = datasets_bpm[read_path_bpm][fieldname_bpm]
@@ -299,37 +299,37 @@ function plot_spectrum_spl(dataset_infos, microphones, BPF, sph_ntht, pangle::Fu
             # Convert narrow -> 1/3 or 1/3 -> narrow band to make tonal and
             # broadband comparable
             if onethirdoctave
-                if !psworg_onethirdoctave
-                    freqs_psw, org_spl_psw = narrow2onethird_spl(freqs_psw, org_spl_psw)
+                if !pwworg_onethirdoctave
+                    freqs_pww, org_spl_pww = narrow2onethird_spl(freqs_pww, org_spl_pww)
                 end
             else
-                df = (freqs_psw[2]-freqs_psw[1])
+                df = (freqs_pww[2]-freqs_pww[1])
                 println("Converting BPM to narrow band of bin width $(round(df, digits=1)) Hz")
                 freqs_bpm, org_spl_bpm = onethird2narrow_spl(freqs_bpm, df, org_spl_bpm; smooth=smooth_narrow)
             end
 
             # Define the range of frequency as the union of both components
-            freqs = freqs_psw                       # Grab PSW frequency range
-            if freqs_psw[end] < freqs_bpm[end]  # Add BPM range
-                bpm_i = findfirst( f -> f > freqs_psw[end], freqs_bpm)
+            freqs = freqs_pww                       # Grab PWW frequency range
+            if freqs_pww[end] < freqs_bpm[end]  # Add BPM range
+                bpm_i = findfirst( f -> f > freqs_pww[end], freqs_bpm)
                 freqs = vcat(freqs, freqs_bpm[bpm_i:end])
-                spl_psw = vcat(org_spl_psw, [-30.0 for i in bpm_i:length(freqs_bpm)])
+                spl_pww = vcat(org_spl_pww, [-30.0 for i in bpm_i:length(freqs_bpm)])
             else
-                spl_psw = org_spl_psw
+                spl_pww = org_spl_pww
             end
 
             # Interpolate broadband data into the same frequencies than tonal data
             spl_bpm = math.akima(freqs_bpm, org_spl_bpm, freqs)
 
             # Add tonal and broadband SPL together
-            spl = addSPL(spl_psw, spl_bpm)
+            spl = addSPL(spl_pww, spl_bpm)
 
             if components
                 plt.plot(freqs*xscaling, spl, "-", alpha=0.75, label=lbl*" --- Total", color=clr)
                 plt.plot(freqs_bpm*xscaling, org_spl_bpm, ":", alpha=0.75, label=lbl*" --- BPM", color=clr)
-                plt.plot(freqs_psw*xscaling, org_spl_psw, "--", alpha=0.75, label=lbl*" --- FW-H", color=clr)
+                plt.plot(freqs_pww*xscaling, org_spl_pww, "--", alpha=0.75, label=lbl*" --- FW-H", color=clr)
             elseif !add_broadband
-                plt.plot(freqs_psw*xscaling, org_spl_psw, stl, alpha=0.75, label=lbl, color=clr)
+                plt.plot(freqs_pww*xscaling, org_spl_pww, stl, alpha=0.75, label=lbl, color=clr)
             else
                 plt.plot(freqs*xscaling, spl, ("o"^onethirdoctave)*stl, alpha=0.75, label=lbl, color=clr)
             end
@@ -368,7 +368,7 @@ end
 
 """
     `plot_directivity_splbpf(dataset_infos, BPFi, BPF, pangle::Function;
-                                        datasets_psw=def_datasets_psw,
+                                        datasets_pww=def_datasets_pww,
                                         datasets_bpm=def_datasets_bpm,
                                         plot_csv=[],
                                         thetalims=180*[1, -1],
@@ -388,7 +388,7 @@ frequency `BPF`.
                             azimuthal dimension of the grid) as `pangle(i)`.
 
 # OPTIONAL ARGUMENTS
-* `datasets_psw`      : PSU-WOPWOP datasets where to read data from.
+* `datasets_pww`      : PSU-WOPWOP datasets where to read data from.
 * `datasets_bpm`      : BPM datasets where to read data from.
 * `plot_csv`          : Give it the path to a CSV file to include in the plot.
 
@@ -396,18 +396,18 @@ frequency `BPF`.
 ```julia
 
 # Dataset to read and associated information
-dataset_infos = [   # (label, PSW solution, BPM solution, BPM freq bins, line style, color)
+dataset_infos = [   # (label, PWW solution, BPM solution, BPM freq bins, line style, color)
                     ("FLOWUnsteady w/BEMT",
-                        "temps/example_dji9443_00_psw00/runcase/",
+                        "temps/example_dji9443_00_pww00/runcase/",
                         "temps/example_dji9443_00_bpm00",
                         "-", "r")
                 ]
 
-datasets_psw = Dict()     # Stores PSW data in this dictionary
+datasets_pww = Dict()     # Stores PWW data in this dictionary
 datasets_bpm = Dict()     # Stores BPM data in this dictionary
 
 # Read datasets and stores them in dictionaries
-FLOWNoise.read_data(dataset_infos; datasets_psw=datasets_psw, datasets_bpm=datasets_bpm)
+FLOWNoise.read_data(dataset_infos; datasets_pww=datasets_pww, datasets_bpm=datasets_bpm)
 
 BPFi = 1                 # Multiple of blade-passing frequency to plot
 
@@ -422,14 +422,14 @@ plot_experimental = [(filename1, "Experimental", "ok", Aweighted, []),
 
 # Plot SPL directivity of first blade-passing frequency
 FLOWNoise.plot_directivity_splbpf(dataset_infos, BPFi, BPF, pangle;
-                                    datasets_psw=datasets_psw,
+                                    datasets_pww=datasets_pww,
                                     datasets_bpm=datasets_bpm,
                                     plot_csv=plot_experimental,
                                     rticks=40:4:52, rlims=[40, 54], rorigin=36)
 ```
 """
 function plot_directivity_splbpf(dataset_infos, BPFi, BPF, pangle::Function;
-                                    datasets_psw=def_datasets_psw,
+                                    datasets_pww=def_datasets_pww,
                                     datasets_bpm=def_datasets_bpm,
                                     plot_csv=[],
                                     thetalims=180*[1, -1],
@@ -439,7 +439,7 @@ function plot_directivity_splbpf(dataset_infos, BPFi, BPF, pangle::Function;
                                     Pref=L" re $20\mu$Pa")
 
     # BPFi         = 1                     # BPF multiple to plot
-    fieldname_psw = "spl_spectrum"         # Field to plot
+    fieldname_pww = "spl_spectrum"         # Field to plot
     fieldname_bpm = "spl_spectrum"         # Field to plot
 
     plt.figure("$(fieldname_bpm)-$(BPFi)", figsize=[3, 3]*2)
@@ -450,30 +450,35 @@ function plot_directivity_splbpf(dataset_infos, BPFi, BPF, pangle::Function;
     end
 
     # Plot datasets
-    for (lbl, read_path_psw, read_path_bpm, stl, clr) in dataset_infos
+    for (lbl, read_path_pww, read_path_bpm, stl, clr) in dataset_infos
 
         # Fetch tonal noise
-        data_psw = datasets_psw[read_path_psw][fieldname_psw]
-        yi = data_psw["hs"]["Total_dB"]
-        fi = data_psw["hs"]["Frequency"]
+        data_pww = datasets_pww[read_path_pww][fieldname_pww]
+        yi = data_pww["hs"]["Total_dB"]
+        fi = data_pww["hs"]["Frequency"]
 
-        df = data_psw["field"][1, 1, 2, fi] - data_psw["field"][1, 1, 1, fi] # Frequency step
-        freqi = ceil(Int, BPFi*BPF/df + 1)                           # Frequency index
-        freq = data_psw["field"][1, 1, freqi, fi]                    # Frequency
+
+        minf = data_pww["field"][1, 1, 1, fi]                        # Minimum frequency available
+        @assert BPFi*BPF > minf ""*
+            "Requested frequency $(BPFi*BPF) Hz, but minimum available is $(minf) Hz"
+
+        df = data_pww["field"][1, 1, 2, fi] - data_pww["field"][1, 1, 1, fi] # Frequency step
+        freqi = ceil(Int, (BPFi*BPF - minf)/df + 1)                           # Frequency index
+        freq = data_pww["field"][1, 1, freqi, fi]                    # Frequency
         # _lbl = " @ $(Int(round(freq, digits=0))) Hz"                 # Frequency string
         _lbl = ""
 
-        spl_psw = data_psw["field"][:, 1, freqi, yi]
+        spl_pww = data_pww["field"][:, 1, freqi, yi]
 
         # Fetch broadband noise
         data_bpm = datasets_bpm[read_path_bpm][fieldname_bpm]
         freqs_bpm = datasets_bpm[read_path_bpm]["frequencies"]["field"][:, 1]
-        spl_bpm = [math.akima(freqs_bpm, data_bpm["field"][:, mici], freq) for mici in 1:length(spl_psw)]
+        spl_bpm = [math.akima(freqs_bpm, data_bpm["field"][:, mici], freq) for mici in 1:length(spl_pww)]
 
         # Add tonal and broadband SPL together
-        # spl = addSPL(spl_psw, spl_bpm)
+        # spl = addSPL(spl_pww, spl_bpm)
         # NOTE: Here we ignore the broadband component since it is in a 1/3 octave band
-        spl = spl_psw
+        spl = spl_pww
 
         angles = pangle.(1:length(spl))
         plt.polar(pi/180*angles, spl, stl, label=lbl*_lbl, alpha=0.8, color=clr)
@@ -498,7 +503,7 @@ end
 
 """
     `plot_directivity_oaspl(dataset_infos, pangle::Function;
-                                        datasets_psw=def_datasets_psw,
+                                        datasets_pww=def_datasets_pww,
                                         datasets_bpm=def_datasets_bpm,
                                         Aweighted=false,
                                         plot_csv=[],
@@ -518,7 +523,7 @@ Plot overall SPL directivity.
                             azimuthal dimension of the grid) as `pangle(i)`.
 
 # OPTIONAL ARGUMENTS
-* `datasets_psw`      : PSU-WOPWOP datasets where to read data from.
+* `datasets_pww`      : PSU-WOPWOP datasets where to read data from.
 * `datasets_bpm`      : BPM datasets where to read data from.
 * `Aweighted`         : Plot A-weighted SPL.
 * `plot_csv`          : Give it the path to a CSV file to include in the plot.
@@ -527,18 +532,18 @@ Plot overall SPL directivity.
 ```julia
 
 # Dataset to read and associated information
-dataset_infos = [   # (label, PSW solution, BPM solution, BPM freq bins, line style, color)
+dataset_infos = [   # (label, PWW solution, BPM solution, BPM freq bins, line style, color)
                     ("FLOWUnsteady w/BEMT",
-                        "temps/example_dji9443_00_psw00/runcase/",
+                        "temps/example_dji9443_00_pww00/runcase/",
                         "temps/example_dji9443_00_bpm00",
                         "-", "r")
                 ]
 
-datasets_psw = Dict()     # Stores PSW data in this dictionary
+datasets_pww = Dict()     # Stores PWW data in this dictionary
 datasets_bpm = Dict()     # Stores BPM data in this dictionary
 
 # Read datasets and stores them in dictionaries
-FLOWNoise.read_data(dataset_infos; datasets_psw=datasets_psw, datasets_bpm=datasets_bpm)
+FLOWNoise.read_data(dataset_infos; datasets_pww=datasets_pww, datasets_bpm=datasets_bpm)
 
 Aweighted = false
 
@@ -549,7 +554,7 @@ plot_experimental = [(filename1, "Experimental", "ok", Aweighted, [])]
 
 # Plot OASPL directivity
 FLOWNoise.plot_directivity_oaspl(dataset_infos, pangle;
-                                    datasets_psw=datasets_psw,
+                                    datasets_pww=datasets_pww,
                                     datasets_bpm=datasets_bpm,
                                     Aweighted=Aweighted,
                                     plot_csv=plot_experimental,
@@ -557,7 +562,7 @@ FLOWNoise.plot_directivity_oaspl(dataset_infos, pangle;
 ```
 """
 function plot_directivity_oaspl(dataset_infos, pangle::Function;
-                                    datasets_psw=def_datasets_psw,
+                                    datasets_pww=def_datasets_pww,
                                     datasets_bpm=def_datasets_bpm,
                                     Aweighted=false,
                                     add_broadband=true,
@@ -568,8 +573,8 @@ function plot_directivity_oaspl(dataset_infos, pangle::Function;
                                     rticks=40:10:70, rlims=[40, 72], rorigin=30,
                                     Pref=L" re $20\mu$Pa")
 
-    fieldname_psw = "OASPLdB"*"A"^Aweighted # Field to plot
-    fieldname_bpm = fieldname_psw           # Field to plot
+    fieldname_pww = "OASPLdB"*"A"^Aweighted # Field to plot
+    fieldname_bpm = fieldname_pww           # Field to plot
 
     plt.figure("$(fieldname_bpm)", figsize=[3, 3]*2)
 
@@ -579,25 +584,25 @@ function plot_directivity_oaspl(dataset_infos, pangle::Function;
     end
 
     # Plot datasets
-    for (lbl, read_path_psw, read_path_bpm, stl, clr) in dataset_infos
+    for (lbl, read_path_pww, read_path_bpm, stl, clr) in dataset_infos
 
         # Fetch tonal noise
-        data_psw = datasets_psw[read_path_psw][fieldname_psw]
-        yi = data_psw["hs"]["TotalOASPLdB"*"A"^Aweighted]
-        oaspl_psw = data_psw["field"][:, 1, 1, yi]
+        data_pww = datasets_pww[read_path_pww][fieldname_pww]
+        yi = data_pww["hs"]["TotalOASPLdB"*"A"^Aweighted]
+        oaspl_pww = data_pww["field"][:, 1, 1, yi]
 
         # Fetch broadband noise
         data_bpm = datasets_bpm[read_path_bpm][fieldname_bpm]
         oaspl_bpm = data_bpm["field"][:]
 
         # Add tonal and broadband OASPL together
-        oaspl = addSPL(oaspl_psw, oaspl_bpm)
+        oaspl = addSPL(oaspl_pww, oaspl_bpm)
 
         angles = pangle.(1:length(oaspl))
         if add_broadband
             plt.polar(pi/180*angles, oaspl, stl, label=lbl, alpha=0.8, color=clr)
         else
-            plt.polar(pi/180*angles, oaspl_psw, stl, label=lbl, alpha=0.8, color=clr)
+            plt.polar(pi/180*angles, oaspl_pww, stl, label=lbl, alpha=0.8, color=clr)
         end
     end
 

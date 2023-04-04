@@ -708,7 +708,7 @@ function save_geomwopwop2vtk(read_path::String, save_path::String; prompt=true,
     # Create save path
     gt.create_path(save_path, prompt)
 
-    # Identify loft and compact PSW files
+    # Identify loft and compact PWW files
     wopfiles = [fname for fname in readdir(read_path)
                 if occursin("loft.wop", fname) || occursin("compact.wop", fname)]
 
@@ -723,7 +723,7 @@ function save_geomwopwop2vtk(read_path::String, save_path::String; prompt=true,
         # Loading file if compact patch
         lfname = occursin("compact.wop", fname) ? "automatic" : nothing
 
-        # Convert from PSW to VTK
+        # Convert from PWW to VTK
         vtk_str *= geomwopwop2vtk(fname; read_path=read_path,
                                         loading_file=lfname,
                                         verbose=verbose && verbose_level>0,
@@ -938,7 +938,7 @@ end
 Read the solution field created by PSU-WOPWOP named `fieldname` (i.e., pressure,
 spl_spectrum, OASPLdB, or OASPLdBA) under `read_path`.
 """
-function read_pswfield(fieldname::String, read_path; re20=false, tec=false,
+function read_pwwfield(fieldname::String, read_path; re20=false, tec=false,
                                                                      optargs...)
     header, field = read_wopwopoutput(fieldname; read_path=read_path, tec=tec,
                                                                     optargs...)
@@ -954,14 +954,14 @@ function read_pswfield(fieldname::String, read_path; re20=false, tec=false,
 end
 
 
-function read_pswfield(fieldnames::Array{String, 1}, read_path;
+function read_pwwfield(fieldnames::Array{String, 1}, read_path;
                             re20crit=["OASPLdB", "OASPLdBA"], tec=false,
                             optargs...)
 
     datas = Dict()
 
     for fieldname in fieldnames
-        data = read_pswfield(fieldname, read_path; re20=!prod(!contains(fieldname, crit ) for crit in re20crit),
+        data = read_pwwfield(fieldname, read_path; re20=!prod(!contains(fieldname, crit ) for crit in re20crit),
                                                        tec=tec, optargs...)
 
 
@@ -971,16 +971,16 @@ function read_pswfield(fieldnames::Array{String, 1}, read_path;
     return datas
 end
 
-function fetch_pswfield(read_path::String, args...;
+function fetch_pwwfield(read_path::String, args...;
                         # fieldnames=["pressure", "spl_spectrum", "OASPLdB", "OASPLdBA"],
                         fieldnames=["spl_spectrum", "OASPLdB", "OASPLdBA"],
-                        datasets=def_datasets_psw, verbose=true, v_lvl=0,
+                        datasets=def_datasets_pww, verbose=true, v_lvl=0,
                         verbose_level=1, optargs...)
 
     if verbose; println("\t"^v_lvl*
                         "*"^72*"\n*\tReading dataset $read_path\n"*"*"^72); end;
 
-    datasets[read_path] = read_pswfield(fieldnames, read_path, args...;
+    datasets[read_path] = read_pwwfield(fieldnames, read_path, args...;
                                             verbose=verbose,
                                             verbose_level=verbose_level-1,
                                             v_lvl=v_lvl+1,
@@ -989,13 +989,13 @@ function fetch_pswfield(read_path::String, args...;
     return datasets[read_path]
 end
 
-function fetch_pswdataset(read_path, args...; datasets=def_datasets_psw,
+function fetch_pwwdataset(read_path, args...; datasets=def_datasets_pww,
                                                 verbose=true, v_lvl=0,
                                                 force_read=false,
                                                 optargs...)
 
     if !(read_path in keys(datasets)) || force_read
-        return fetch_pswfield(read_path, args...; verbose=verbose, v_lvl=v_lvl,
+        return fetch_pwwfield(read_path, args...; verbose=verbose, v_lvl=v_lvl,
                                                   datasets=datasets, optargs...)
     else
         if verbose; println("\t"^v_lvl*
@@ -1011,7 +1011,7 @@ function read_bpmoutput(args...; datasets=def_datasets_bpm, optargs...)
     return read_wopwopoutput(args...; tec=true, datasets=datasets, optargs...)
 end
 function fetch_bpmdataset(args...; datasets=def_datasets_bpm, optargs...)
-    return fetch_pswdataset(args...; tec=true, datasets=datasets,
+    return fetch_pwwdataset(args...; tec=true, datasets=datasets,
                                      fieldnames=["spl_spectrum", "splA_spectrum",
                                                           "OASPLdB", "OASPLdBA"],
                                                                     optargs...)

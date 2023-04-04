@@ -51,7 +51,7 @@ plt.rc("figure", titlesize=BIGGER_SIZE)  # fontsize of the figure title
 # ------------ GLOBAL VARIABLES ------------------------------------------------
 const module_path = splitdir(@__FILE__)[1]                # Path to this module
 
-const def_datasets_psw = Dict()     # Stores PSW data in this dictionary by default
+const def_datasets_pww = Dict()     # Stores PWW data in this dictionary by default
 const def_datasets_bpm = Dict()     # Stores BPM data in this dictionary by default
 
 # ------------ HEADERS ---------------------------------------------------------
