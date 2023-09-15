@@ -34,6 +34,16 @@ function addSPL(x::AbstractArray)
     return 10 * log10.(sum(10 .^ (x/10)))
 end
 
+"Adds any number of sound pressure levels together."
+function addSPL(args...)
+
+    pressure = 0.0
+    for arg in args
+        pressure += 10.0^(arg/10.0)
+    end
+
+    return 10.0*log10(pressure)
+end
 
 "SPL spectrum to OASPL - works for A-weighted and non-A-weighted
     spectrums"
