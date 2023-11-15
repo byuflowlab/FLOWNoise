@@ -117,7 +117,9 @@ function read_wopwopoutput(outputname::String; read_path="",
                 for j in 1:jmax
                     for i in 1:imax
                         # NOTE: Shouldn't I be iterating over in the inner loop?
-                        field[i, j, t, fieldi] = Meta.parse(readline(f))
+                        val = Meta.parse(readline(f))
+                        # if typeof(val)!=Float64; println(val);  println(typeof(val)); end;
+                        field[i, j, t, fieldi] = val==:Infinity ? Inf : val
                     end
                 end
             end
