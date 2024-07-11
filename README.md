@@ -6,12 +6,13 @@ postprocessing) developed at BYU's FLOW lab.
 # Files
   * `docs/`: Documentation (open Jupyter notebooks with [nbviewer](https://nbviewer.jupyter.org/)).
 
-# Dependencies
-  * [`GeometricTools`](https://github.com/byuflowlab/GeometricTools.jl)
+# Required Dependencies
   * [`FFTW`](https://github.com/JuliaMath/FFTW.jl)
   * [`WAV`](https://github.com/dancasimiro/WAV.jl)
-  * Paraview  : Not needed, but examples call Paraview for visualization of VTK
-      outputs.
+  
+# Optional Dependencies
+  * [`GeometricTools`](https://github.com/byuflowlab/GeometricTools.jl): if loaded separately, functions in FLOWNoise that use GeometricTools will become available (e.g., `observer_sphere`, PSU-WOPWOP usage)
+  * Paraview  : Not needed, but examples call Paraview for visualization of VTK outputs.
 
 # Related Projects
   * [Rotor-on-rotor aeroacoustic interactions](https://github.com/byuflowlab/alvarezcritchfield2020-noise-prop-on-prop)

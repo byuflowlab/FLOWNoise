@@ -8,7 +8,10 @@
   * Created   : Nov 2019
   * License   : MIT
 =###############################################################################
+import GeometricTools
+const gt = GeometricTools
 
+include("FLOWNoise_observer.jl")
 
 """
     `read_wopwopoutput(outputname; read_path="", tec=false)`

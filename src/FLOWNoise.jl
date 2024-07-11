@@ -10,16 +10,6 @@ postprocessing) developed at BYU's FLOW lab.
 """
 module FLOWNoise
 
-# ------------ FLOW CODES ------------------------------------------------------
-# GeometricTools https://github.com/byuflowlab/GeometricTools.jl
-import GeometricTools
-const gt = GeometricTools
-
-# FLOWMath https://github.com/byuflowlab/FLOWMath.jl
-import FLOWMath
-const math = FLOWMath
-
-
 # ------------ GENERIC MODULES -------------------------------------------------
 import FFTW
 import WAV
@@ -32,6 +22,17 @@ import LinearAlgebra: norm, dot, cross, I
 import Statistics: mean
 import Base: read
 using Printf
+using Requires
+
+# ------------ FLOW CODES ------------------------------------------------------
+# GeometricTools https://github.com/byuflowlab/GeometricTools.jl #! now an optional dependency
+function __init__()
+    @require GeometricTools="83792f5e-c6a1-11e8-2e0a-93511f02ae5f" include("FLOWNoise_wopwop.jl") #include("FLOWNoise_observer.jl") --> loaded within _wopwop.jl file
+end
+
+# FLOWMath https://github.com/byuflowlab/FLOWMath.jl
+import FLOWMath
+const math = FLOWMath
 
 const plt = PyPlot
 
@@ -43,8 +44,10 @@ const def_datasets_bpm = Dict()     # Stores BPM data in this dictionary by defa
 
 # ------------ HEADERS ---------------------------------------------------------
 # Load headers
-for module_name in ["observer", "wopwop", "wav", "processing",
+for module_name in ["wav", "processing",
                     "timedomain", "freqdomain", "postprocessing"]
+# for module_name in ["observer", "wopwop", "wav", "processing",
+#                     "timedomain", "freqdomain", "postprocessing"]
     include("FLOWNoise_"*module_name*".jl")
 end
 
