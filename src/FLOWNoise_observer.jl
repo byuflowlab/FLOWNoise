@@ -77,7 +77,7 @@ function observer_sphere(R::Real, nR::Int, ntht::Int, nphi::Int;
     end
 
     # Generates parametric (theta, phi, r) grid
-    grid = gt.Grid(P_min, P_max, NDIVS, loop_dim)
+    grid = gt.Grid(P_min, P_max, NDIVS; loop_dim=loop_dim)
 
     # Transforms the grid into a spherical cartesian space
     my_transform(X) = gt.spherical3D(vcat(X[3], X[1:2]))
